@@ -143,6 +143,20 @@
       "views": 0,
       "status": "active",
       "message_id": 197
+    },
+    "AD7874662": {
+      "id": "AD7874662",
+      "chat_id": 7791723989,
+      "title": "123123",
+      "price": 12123123.0,
+      "currency": "сом",
+      "address": "Кыргызстан, г. Токмок, ул. Манаса, 119, 720708",
+      "fio": "Бекмуратов Тимур Бекович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T00:35:57.459910",
+      "views": 0,
+      "status": "active",
+      "message_id": 204
     }
   }
 }

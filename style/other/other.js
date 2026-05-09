@@ -18,22 +18,9 @@ var _userClosedChat = false;
 
 function forceOpenChat() {
   var supportCircle = document.querySelector(".support-circle");
-  var chatra = document.querySelector("#chatra");
-  
   if (supportCircle) supportCircle.style.display = "none";
-  if (chatra) {
-    chatra.style.display = "block";
-    
-    chatra.style.zIndex = "2147483647";
-    var iframe = document.getElementById("chatra__iframe");
-    if (iframe && iframe.contentWindow) {
-      try {
-        var elmnt = iframe.contentWindow.document.querySelector("#app");
-        if (elmnt) elmnt.style.display = "block";
-      } catch(e) {
-        
-      }
-    }
+  if (typeof smartsupp === 'function') {
+    smartsupp('chat:open');
   }
 }
 
