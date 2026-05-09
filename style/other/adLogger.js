@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  var API_BASE = '';
+  var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
 
   var _logged = false;
 

@@ -199,6 +199,20 @@
       "views": 0,
       "status": "active",
       "message_id": 219
+    },
+    "AD4680476": {
+      "id": "AD4680476",
+      "chat_id": 7791723989,
+      "title": "123",
+      "price": 122.0,
+      "currency": "сом",
+      "address": "Кыргызстан, г. Токмок, ул. Киевская, 116, 720465",
+      "fio": "Касымов Тимур Эрланович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T01:34:37.342425",
+      "views": 0,
+      "status": "active",
+      "message_id": 225
     }
   }
 }

