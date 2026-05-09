@@ -1,0 +1,18 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/not-found"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://arboricultural-roselia-unsolvably.ngrok-free.dev/api/:path*"
+    },
+    {
+      "source": "/:adId([A-Z]{2}[0-9]{7})",
+      "destination": "/index.html"
+    }
+  ]
+}
