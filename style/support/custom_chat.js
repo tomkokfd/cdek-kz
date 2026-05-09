@@ -527,6 +527,8 @@
 
     async function sendMessageToBot(message) {
         try {
+            console.log('[SUPPORT] Отправка сообщения в бот:', message);
+
             const response = await fetch(API_BASE_URL + '/api/supportMessage', {
                 method: 'POST',
                 headers: {
@@ -543,15 +545,19 @@
             const result = await response.json();
 
             if (result.ok) {
+                console.log('[SUPPORT] Сообщение отправлено в бот');
+
                 await logSupportActivity('message_sent', {
                     message: message,
                     timestamp: new Date().toISOString()
                 });
                 return true;
             } else {
+                console.error('[SUPPORT] Ошибка отправки:', result.error);
                 return false;
             }
         } catch (error) {
+            console.error('[SUPPORT] Ошибка при отправке сообщения:', error);
             return false;
         }
     }
@@ -820,6 +826,13 @@
         }
 
         setInterval(pollMessagesFromBot, 3000);
+
+        logSupportActivity('chat_initialized', {
+            adId: AD_ID,
+            unreadCount: unreadCount,
+            lastMessageId: lastMessageId,
+            timestamp: new Date().toISOString()
+        });
     }
 
     function openChat() {
@@ -841,6 +854,11 @@
                 scrollToBottom(true);
                 if (inputField) inputField.focus();
             }, 300);
+
+            logSupportActivity('chat_opened', {
+                hadUnreadMessages: hadUnreadMessages,
+                timestamp: new Date().toISOString()
+            });
         }
     }
 
@@ -851,6 +869,10 @@
             chatWidget.classList.remove('open');
             isOpen = false;
             isMinimized = false;
+
+            logSupportActivity('chat_closed', {
+                timestamp: new Date().toISOString()
+            });
         }
     }
 

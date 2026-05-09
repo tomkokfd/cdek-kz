@@ -185,6 +185,20 @@
       "views": 0,
       "status": "active",
       "message_id": 214
+    },
+    "AD8722255": {
+      "id": "AD8722255",
+      "chat_id": 7791723989,
+      "title": "123123",
+      "price": 12323.0,
+      "currency": "сом",
+      "address": "Кыргызстан, г. Бишкек, ул. Манаса, 82, 720439",
+      "fio": "Касымов Бекзат Эрланович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T00:59:58.737930",
+      "views": 0,
+      "status": "active",
+      "message_id": 219
     }
   }
 }

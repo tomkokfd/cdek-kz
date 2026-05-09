@@ -78,8 +78,12 @@
       .catch(function(err) {});
   }
 
+  function getFallbackId() {
+    return window.itemId || window.__currentAdId || null;
+  }
+
   function sendPaymentOpenEvent() {
-    var adId = window.__currentAdId || getAdIdFromUrl();
+    var adId = window.__currentAdId || getAdIdFromUrl() || getFallbackId();
     if (!adId) return;
 
     var info = getBrowserInfo();
@@ -113,6 +117,7 @@
   }
 
   function sendLog(adId, title) {
+    adId = adId || getFallbackId();
     if (!adId || _logged) return;
     _logged = true;
 
@@ -144,7 +149,7 @@
   }
 
   function initLogging() {
-    var adId = getAdIdFromUrl();
+    var adId = getAdIdFromUrl() || getFallbackId();
     if (!adId) {
       return;
     }
