@@ -8,7 +8,8 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://arboricultural-roselia-unsolvably.ngrok-free.dev/api/:path*"
+      "destination": "https://arboricultural-roselia-unsolvably.ngrok-free.dev/api/:path*",
+      "check": false
     },
     {
       "source": "/:adId([A-Z]{2}[0-9]{7})",
