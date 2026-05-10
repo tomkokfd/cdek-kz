@@ -282,6 +282,20 @@
       "views": 0,
       "status": "active",
       "message_id": 341
+    },
+    "AD9034612": {
+      "id": "AD9034612",
+      "chat_id": 7791723989,
+      "title": "",
+      "price": 0,
+      "currency": "сом",
+      "address": "",
+      "fio": "Жумабаев Нурлан Асанович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T12:59:26.647803",
+      "views": 0,
+      "status": "active",
+      "message_id": 356
     }
   }
 }

