@@ -324,6 +324,34 @@
       "views": 0,
       "status": "active",
       "message_id": 396
+    },
+    "AD4575511": {
+      "id": "AD4575511",
+      "chat_id": 7791723989,
+      "title": "",
+      "price": 0,
+      "currency": "сом",
+      "address": "[eq",
+      "fio": "Бекмуратов Эрлан Асанович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T13:42:17.323464",
+      "views": 0,
+      "status": "active",
+      "message_id": 418
+    },
+    "AD8345966": {
+      "id": "AD8345966",
+      "chat_id": 7791723989,
+      "title": "12123123123",
+      "price": 12123123.0,
+      "currency": "сом",
+      "address": "",
+      "fio": "",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T13:42:17.436485",
+      "views": 0,
+      "status": "active",
+      "message_id": 418
     }
   }
 }
