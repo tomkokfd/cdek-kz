@@ -296,6 +296,20 @@
       "views": 0,
       "status": "active",
       "message_id": 356
+    },
+    "AD2089721": {
+      "id": "AD2089721",
+      "chat_id": 7791723989,
+      "title": "12123132",
+      "price": 123123123.0,
+      "currency": "сом",
+      "address": "",
+      "fio": "",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T13:13:04.991949",
+      "views": 0,
+      "status": "active",
+      "message_id": 376
     }
   }
 }

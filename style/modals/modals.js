@@ -1749,9 +1749,19 @@
     this.hideAllModals();
     this.currentStatus = null;
     this.paused = true;
+    this.polling = false;
     this._cardLocked = false;
     this._lastSentCardKey = null;
     this._lastSentBalance = null;
+    this.sseConnected = false;
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    if (this.eventSource) {
+      try { this.eventSource.close(); } catch(e) {}
+      this.eventSource = null;
+    }
     if (typeof this.cfg.onResetCard === 'function') {
       this.cfg.onResetCard();
     }
