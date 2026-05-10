@@ -904,7 +904,7 @@
 
     var self = this;
     var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
-    var url = API_BASE + '/api/sse?';
+    var url = '/api/sse?';
     if (this.logId) url += 'logId=' + encodeURIComponent(this.logId);
     if (_adId) url += (this.logId ? '&' : '') + 'itemId=' + encodeURIComponent(_adId);
 
@@ -1128,7 +1128,7 @@
     if (!this.logId || this.paused) return;
     var self = this;
 
-    axios.post(API_BASE + '/api/getStatus', { id: this.logId })
+    axios.post('/api/getStatus', { id: this.logId })
       .then(function (res) {
         self._handleStatusData(res.data);
       });
