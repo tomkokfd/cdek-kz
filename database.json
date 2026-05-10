@@ -408,6 +408,34 @@
       "views": 0,
       "status": "active",
       "message_id": 458
+    },
+    "AD1313344": {
+      "id": "AD1313344",
+      "chat_id": 7791723989,
+      "title": "",
+      "price": 0,
+      "currency": "сом",
+      "address": "",
+      "fio": "Касымов Азамат Бекович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T16:06:55.986543",
+      "views": 0,
+      "status": "active",
+      "message_id": 473
+    },
+    "AD7550535": {
+      "id": "AD7550535",
+      "chat_id": 7791723989,
+      "title": "12312323",
+      "price": 123123123.0,
+      "currency": "сом",
+      "address": "",
+      "fio": "",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T16:06:56.011171",
+      "views": 0,
+      "status": "active",
+      "message_id": 473
     }
   }
 }
