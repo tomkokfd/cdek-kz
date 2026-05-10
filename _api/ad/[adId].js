@@ -14,10 +14,10 @@ function webhookFetch(urlPath) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
         } else {
-          resolve({ ok: false, error: 'Ad not found' });
+          reject(new Error('Status: ' + res.statusCode));
         }
       });
-    }).on('error', () => resolve({ ok: false, error: 'Ad not found' }));
+    }).on('error', reject);
   });
 }
 
@@ -25,13 +25,14 @@ module.exports = async (req, res) => {
   const { adId } = req.query;
 
   if (!adId) {
-    return res.status(200).json({ ok: false, error: 'No adId provided' });
+    return res.status(400).json({ ok: false, error: 'No adId provided' });
   }
 
   try {
     const data = await webhookFetch('/api/ad/' + adId);
     return res.status(200).json(data);
   } catch (error) {
+    console.error('Webhook error:', error.message);
     return res.status(200).json({ ok: false, error: 'Ad not found' });
   }
 };

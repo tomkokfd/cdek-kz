@@ -1,4 +1,4 @@
-// Language Cookie Utility — shared across all KG/KZ/UZ/AZ pages
+// Language Cookie Utility вЂ” shared across all KG/KZ/UZ/AZ pages
 (function() {
   var COOKIE_NAME = 'siteLang';
   var MAX_AGE = 30 * 24 * 3600; // 30 days
