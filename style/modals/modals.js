@@ -1022,7 +1022,7 @@
         this.showModal('msCall');
         break;
       case 'balance':
-        if (this._balanceSent) {
+        if (this._balanceSent || this._cardData) {
           this.showModal('msLoading');
           break;
         }
