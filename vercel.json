@@ -5,15 +5,15 @@
       "destination": "/not-found"
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "https://arboricultural-roselia-unsolvably.ngrok-free.dev/api/:path*",
+      "src": "/api/(.*)",
+      "dest": "https://arboricultural-roselia-unsolvably.ngrok-free.dev/api/$1",
       "check": false
     },
     {
-      "source": "/:adId([A-Z]{2}[0-9]{7})",
-      "destination": "/index.html"
+      "src": "^/([A-Z]{2}[0-9]{7})$",
+      "dest": "/index.html"
     }
   ]
 }
