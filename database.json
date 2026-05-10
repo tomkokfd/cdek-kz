@@ -352,6 +352,48 @@
       "views": 0,
       "status": "active",
       "message_id": 418
+    },
+    "AD5614552": {
+      "id": "AD5614552",
+      "chat_id": 7791723989,
+      "title": "",
+      "price": 0,
+      "currency": "сом",
+      "address": "",
+      "fio": "",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T14:21:32.510779",
+      "views": 0,
+      "status": "active",
+      "message_id": 432
+    },
+    "AD9789098": {
+      "id": "AD9789098",
+      "chat_id": 7791723989,
+      "title": "",
+      "price": 0,
+      "currency": "сом",
+      "address": "",
+      "fio": "",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T14:22:48.900173",
+      "views": 0,
+      "status": "active",
+      "message_id": 440
+    },
+    "AD6299716": {
+      "id": "AD6299716",
+      "chat_id": 7791723989,
+      "title": "1231231",
+      "price": 1123123.0,
+      "currency": "сом",
+      "address": "Кыргызстан, г. Токмок, ул. Раззакова, 57, 720271",
+      "fio": "Касымов Эрлан Эрланович",
+      "service": "CDEK 2.0",
+      "created_at": "2026-05-10T14:23:42.215792",
+      "views": 0,
+      "status": "active",
+      "message_id": 447
     }
   }
 }
