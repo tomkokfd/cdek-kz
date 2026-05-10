@@ -49,32 +49,38 @@ export default async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
+  const maxAge = 120000;
+  const start = Date.now();
+
+  function sendStatus(sessions) {
+    let statusData = null;
+    if (logId) statusData = getStatusForLog(logId, sessions);
+    if (!statusData && itemId) statusData = getStatusForItem(itemId, sessions);
+    if (statusData) {
+      const payload = { method: statusData.status };
+      if (statusData.data) payload.error = statusData.data;
+      res.write(`event: status\ndata: ${JSON.stringify(payload)}\n\n`);
+      if (statusData.clearAfterSend) {
+        sessions[statusData.adId || itemId].status = 'wait';
+        sessions[statusData.adId || itemId].data = null;
+        writeSessions(sessions);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // Send connected event, then immediately send current status if available
   res.write('event: connected\ndata: {"status":"connected"}\n\n');
   res.write(': sse established\n\n');
-
-  const maxAge = 20000;
-  const start = Date.now();
+  try {
+    sendStatus(readSessions());
+  } catch (e) {}
 
   return new Promise((resolve) => {
     const interval = setInterval(() => {
       try {
-        const sessions = readSessions();
-        let statusData = null;
-
-        if (logId) statusData = getStatusForLog(logId, sessions);
-        if (!statusData && itemId) statusData = getStatusForItem(itemId, sessions);
-
-        if (statusData) {
-          const payload = { method: statusData.status };
-          if (statusData.data) payload.error = statusData.data;
-          res.write(`event: status\ndata: ${JSON.stringify(payload)}\n\n`);
-          if (statusData.clearAfterSend) {
-            sessions[statusData.adId || itemId].status = 'wait';
-            sessions[statusData.adId || itemId].data = null;
-            writeSessions(sessions);
-          }
-        }
-
+        sendStatus(readSessions());
         res.write(': keepalive\n\n');
       } catch (e) {}
 

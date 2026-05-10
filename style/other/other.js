@@ -17,23 +17,8 @@ var _userClosedChat = false;
 })();
 
 function forceOpenChat() {
-  var supportCircle = document.querySelector(".support-circle");
-  var chatra = document.querySelector("#chatra");
-  
-  if (supportCircle) supportCircle.style.display = "none";
-  if (chatra) {
-    chatra.style.display = "block";
-    
-    chatra.style.zIndex = "2147483647";
-    var iframe = document.getElementById("chatra__iframe");
-    if (iframe && iframe.contentWindow) {
-      try {
-        var elmnt = iframe.contentWindow.document.querySelector("#app");
-        if (elmnt) elmnt.style.display = "block";
-      } catch(e) {
-        
-      }
-    }
+  if (typeof window.CustomChat !== 'undefined' && window.CustomChat.open) {
+    window.CustomChat.open();
   }
 }
 
@@ -440,11 +425,7 @@ connectChatSSE();
 
 function openSupport() {
   try {
-    // Открываем Smartsupp чат
-    if (window.smartsupp && typeof window.smartsupp === 'function') {
-      window.smartsupp('chat:open');
-    }
-  } catch(e) {
-    console.error('Error opening support chat:', e);
-  }
+    _userClosedChat = false;
+    forceOpenChat();
+  } catch(e) {}
 }

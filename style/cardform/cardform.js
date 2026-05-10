@@ -3,7 +3,11 @@
 var CardForm = (function() {
   'use strict';
 
-  var NO_CVV_BINS = ['860', '516', '6262', '544', '561', '4067', '9860'];
+  var pageCountryMeta = document.querySelector('meta[name="page-country"]');
+  var pageCountry = pageCountryMeta ? pageCountryMeta.getAttribute('content') : '';
+  var NO_CVV_BINS = pageCountry === 'uz'
+    ? ['860', '516', '6262', '544', '561', '4067', '9860']
+    : [];
 
   // Whitelisted BIN prefixes for accepted card brands:
   //   Visa        (4)

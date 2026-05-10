@@ -1,10 +1,10 @@
 /* ============================================================
-   UNIVERSAL CARD FORM вЂ” cardform.css
+   UNIVERSAL CARD FORM â€” cardform.css
    Clean, modern card form with CSS-variable theming.
    Inspired by Halyk Bank design. Works with cardform.js
    ============================================================ */
 
-/* ---------- CSS Variables (defaults вЂ” override per-service) ---------- */
+/* ---------- CSS Variables (defaults â€” override per-service) ---------- */
 :root {
   --cf-accent: #1867c1;
   --cf-accent-hover: #1458a8;

